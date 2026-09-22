@@ -61,11 +61,16 @@ function buildPoolConfig(): PoolConfig {
     );
   }
 
-  // Detect whether we're traversing the local SSH tunnel.
+  // Detect whether we're traversing the local SSH tunnel or connecting to
+  // a CI-localhost ephemeral postgres (which does not support SSL).
   // In that case, the RDS cert hostname won't match 127.0.0.1, so we must
   // skip strict cert verification. In a real production deploy, switch this
   // to use the AWS RDS CA bundle + rejectUnauthorized: true.
-  const isLocalTunnel = url.includes('127.0.0.1') || url.includes('localhost');
+  //
+  // For pure localhost / 127.0.0.1 (CI ephemeral postgres, local dev), we
+  // DISABLE SSL entirely because the ephemeral service does not support it
+  // and the SSH-tunnel mismatch path is not relevant.
+  const isLocalHost = url.includes('127.0.0.1') || url.includes('localhost');
 
   return {
     connectionString: url,
@@ -77,7 +82,11 @@ function buildPoolConfig(): PoolConfig {
     // the connection terminates at the RDS instance which has `rds.force_ssl=1`.
     // The cert hostname mismatch is handled by `rejectUnauthorized: false`,
     // which is acceptable because the SSH tunnel itself is already authenticated.
-    ssl: { rejectUnauthorized: false },
+    //
+    // For pure localhost / 127.0.0.1 (CI ephemeral postgres, local dev) we
+    // disable SSL — the ephemeral service does not support it, and the
+    // production RDS path is unaffected.
+    ssl: isLocalHost ? false : { rejectUnauthorized: false },
   };
 }
 
