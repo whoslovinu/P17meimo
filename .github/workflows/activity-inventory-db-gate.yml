@@ -280,7 +280,7 @@ jobs:
                    WHERE table_name='user_inventory' AND table_schema='public';")
           UI_CONST_BEFORE=$(PGPASSWORD=ci_test_pass_not_prod_12345 psql \
             -h localhost -U postgres -d p17_inventory_test \
-            -t -c "SELECT COUNT(*) FROM pg_constraints WHERE conrelid='public.user_inventory'::regclass;")
+            -t -c "SELECT COUNT(*) FROM pg_constraint WHERE conrelid='public.user_inventory'::regclass;")
 
           echo "─── Rollback: DROP TABLE user_activity_inventory ───"
           PGPASSWORD=ci_test_pass_not_prod_12345 psql \
@@ -305,7 +305,7 @@ jobs:
                    WHERE table_name='user_inventory' AND table_schema='public';")
           UI_CONST_AFTER=$(PGPASSWORD=ci_test_pass_not_prod_12345 psql \
             -h localhost -U postgres -d p17_inventory_test \
-            -t -c "SELECT COUNT(*) FROM pg_constraints WHERE conrelid='public.user_inventory'::regclass;")
+            -t -c "SELECT COUNT(*) FROM pg_constraint WHERE conrelid='public.user_inventory'::regclass;")
 
           if [ "$UI_COLS_BEFORE" != "$UI_COLS_AFTER" ]; then
             echo "ERROR: user_inventory column count changed after rollback"
