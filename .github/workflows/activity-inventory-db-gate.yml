@@ -8,7 +8,8 @@
 #
 # TRIGGERS
 #   workflow_dispatch  — manual gate run
-#   pull_request (paths-filtered) — optional automated gate
+#   pull_request (paths-filtered) — automated gate on PR to main
+#   push (paths-filtered)         — automated gate on push to main
 #
 # HARD SAFETY RULES
 #   1. NEVER connect to production RDS (*.rds.amazonaws.com)
@@ -52,6 +53,19 @@ on:
       - '.github/workflows/activity-inventory-db-gate.yml'
       - 'tests/unit/activity-inventory.test.mjs'
       - 'scripts/ci_db_bootstrap.sql'
+  push:
+    branches: [main]
+    paths:
+      - 'lib/db/**'
+      - 'app/api/action/**'
+      - 'app/api/battle/**'
+      - 'app/api/admin/users/**'
+      - 'app/api/admin/user/**'
+      - 'app/lib/activityItems.ts'
+      - 'supabase/migrations/2026-09-22-*'
+      - 'scripts/ci_db_bootstrap.sql'
+      - 'tests/unit/activity-inventory.test.mjs'
+      - '.github/workflows/activity-inventory-db-gate.yml'
 
 jobs:
   activity-inventory-db-gate:
