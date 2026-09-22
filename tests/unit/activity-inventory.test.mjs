@@ -119,6 +119,16 @@ const {
   getActivityDamage,
 } = await import(path.join(process.cwd(), 'lib/db/pg.ts'));
 
+// ── Pre-test diagnostic ───────────────────────────────────────────────────────
+console.log('CI_PRETEST_DIAGNOSTIC_START');
+console.log('DATABASE_SSL_FROM_ENV=' + (process.env.DATABASE_SSL ?? 'UNSET'));
+console.log('DATABASE_URL_HOST=' + new URL(TEST_DB_URL).hostname);
+console.log('disableDbSsl=' + (process.env.DATABASE_SSL === 'false'));
+console.log('prodPool ssl would be: ' + JSON.stringify(
+  process.env.DATABASE_SSL === 'false' ? false : { rejectUnauthorized: false }
+));
+console.log('CI_PRETEST_DIAGNOSTIC_END');
+
 // ── Counters ──────────────────────────────────────────────────────────────────
 let passed = 0;
 let failed = 0;
