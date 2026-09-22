@@ -354,9 +354,10 @@ jobs:
           echo "DATABASE_URL_SET=$(if [ -n \"\${DATABASE_URL:-}\" ]; then echo YES; else echo NO; fi)"
           echo "DATABASE_SSL=${DATABASE_SSL:-UNSET}"
 
-          npx tsx tests/unit/activity-inventory.test.mjs 2>&1
+          # Capture stdout+stderr so test output survives the step even on failure
+          npx tsx tests/unit/activity-inventory.test.mjs 2>&1 | tee test-output.log
 
-          TEST_EXIT=$?
+          TEST_EXIT=${PIPESTATUS[0]}
           echo ""
           echo "test_exit=$TEST_EXIT"
 
@@ -366,6 +367,14 @@ jobs:
           else
             echo "DB_TESTS=PASS"
           fi
+
+      - name: Upload test output artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-output
+          path: test-output.log
+          retention-days: 1
 
       # ── Summary ───────────────────────────────────────────────────────────────
       - name: DB Gate Summary
