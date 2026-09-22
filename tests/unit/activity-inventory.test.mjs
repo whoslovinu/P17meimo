@@ -29,22 +29,70 @@ import fs from 'node:fs';
 const { Pool } = pg;
 
 // ── DB connection ──────────────────────────────────────────────────────────────
-const TEST_DB_URL = process.env.TEST_DATABASE_URL
-  || process.env.DATABASE_URL;
+// Both TEST_DATABASE_URL and DATABASE_URL must exist AND be IDENTICAL.
+// Production helpers (lib/db/pg.ts) read DATABASE_URL; the test reads
+// TEST_DATABASE_URL. Forcing them equal prevents accidental divergence.
+const RAW_TEST_DB_URL = process.env.TEST_DATABASE_URL;
+const RAW_DATABASE_URL = process.env.DATABASE_URL;
 
-if (!TEST_DB_URL) {
-  console.error('Set TEST_DATABASE_URL or DATABASE_URL to a TEST/LOCAL PG.');
-  console.error('NEVER point this at production.');
+console.log(`TEST_DATABASE_URL_SET=${RAW_TEST_DB_URL ? 'YES' : 'NO'}`);
+console.log(`DATABASE_URL_SET=${RAW_DATABASE_URL ? 'YES' : 'NO'}`);
+
+if (!RAW_TEST_DB_URL || !RAW_DATABASE_URL) {
+  console.error('Set BOTH TEST_DATABASE_URL and DATABASE_URL to the SAME test PG.');
+  console.error('NEVER point these at production.');
   process.exit(2);
 }
 
-const PROD_HINT = /rds\.amazonaws\.com|prod|rds-merge/i;
-if (PROD_HINT.test(TEST_DB_URL)) {
-  console.error('REFUSING to run against a production-looking DB URL.');
+if (RAW_TEST_DB_URL !== RAW_DATABASE_URL) {
+  console.error('REFUSING: TEST_DATABASE_URL and DATABASE_URL must be IDENTICAL.');
   process.exit(2);
 }
 
-console.log(`Target DB: ${TEST_DB_URL.replace(/:[^@]*@/, ':***@')}`);
+const TEST_DB_URL = RAW_TEST_DB_URL;
+
+// ── Structured URL guard ───────────────────────────────────────────────────────
+// NEVER substring-match the raw URL or password for "prod" / "rds" — a test
+// password like "ci_test_pass_not_prod_12345" matches /prod/i and causes a
+// false-positive refusal.  Instead, parse the URL and check STRUCTURED
+// fields: hostname must be localhost/127.0.0.1, port 5432, dbname
+// p17_inventory_test, and hostname must not match rds.amazonaws.com.
+let db;
+try {
+    db = new URL(TEST_DB_URL);
+} catch (err) {
+    console.error('REFUSING: TEST_DB_URL is not a valid URL.');
+    process.exit(2);
+}
+
+const host = db.hostname;             // 'localhost' | '127.0.0.1' | <else>
+const port = db.port || '5432';       // URL.port is '' when default
+const dbname = db.pathname.replace(/^\/+/, '');
+
+const allowedHosts = new Set(['localhost', '127.0.0.1']);
+if (!allowedHosts.has(host)) {
+    console.error(`REFUSING: TEST_DB_HOST='${host}' is not localhost/127.0.0.1.`);
+    console.error('PRODUCTION_DB_USED=YES (non-local host rejected)');
+    process.exit(2);
+}
+if (host.includes('rds.amazonaws.com')) {
+    console.error('REFUSING: hostname matches rds.amazonaws.com.');
+    console.error('PRODUCTION_DB_USED=YES (RDS hostname rejected)');
+    process.exit(2);
+}
+if (port !== '5432') {
+    console.error(`REFUSING: TEST_DB_PORT='${port}' is not 5432.`);
+    process.exit(2);
+}
+if (dbname !== 'p17_inventory_test') {
+    console.error(`REFUSING: TEST_DB_NAME='${dbname}' is not 'p17_inventory_test'.`);
+    console.error('PRODUCTION_DB_USED=YES (wrong dbname)');
+    process.exit(2);
+}
+
+console.log(`TEST_DB_HOST=${host}`);
+console.log(`TEST_DB_NAME=${dbname}`);
+console.log('PRODUCTION_DB_USED=NO');
 
 // ── Production helpers ─────────────────────────────────────────────────────────
 // These import from the same DATABASE_URL env var set above.
