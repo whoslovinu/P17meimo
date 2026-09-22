@@ -11,8 +11,9 @@
 #   pull_request (paths-filtered) — optional automated gate
 #
 # HARD SAFETY RULES
-#   1. NEVER connect to production RDS (rp1.*.rds.amazonaws.com)
-#   2. TEST_DATABASE_URL is set ONLY to the ephemeral localhost service
+#   1. NEVER connect to production RDS (*.rds.amazonaws.com)
+#   2. BOTH DATABASE_URL and TEST_DATABASE_URL must be set, to
+#      the SAME ephemeral localhost service
 #   3. If the DB URL looks like production → exit 1 immediately
 #   4. No production secrets in env
 #
@@ -20,6 +21,16 @@
 # ============================================================
 
 name: activity-inventory-db-gate
+
+# ── Workflow-level env: applies to every step ──────────────────────────────────
+# Both vars are required so production helpers (lib/db/pg.ts reads DATABASE_URL)
+# and test identity (TEST_DATABASE_URL) read the same ephemeral CI URL.
+# Production helpers MUST read DATABASE_URL; we expose TEST_DATABASE_URL as an
+# alias and the safety step enforces the two are equal.
+env:
+  TEST_DATABASE_URL: postgresql://postgres:ci_test_pass_not_prod_12345@localhost:5432/p17_inventory_test
+  DATABASE_URL: postgresql://postgres:ci_test_pass_not_prod_12345@localhost:5432/p17_inventory_test
+  NODE_VERSION: '20'
 
 on:
   workflow_dispatch:
@@ -40,12 +51,6 @@ on:
       - '.github/workflows/activity-inventory-db-gate.yml'
       - 'tests/unit/activity-inventory.test.mjs'
       - 'scripts/ci_db_bootstrap.sql'
-
-    env:
-      # Ephemeral CI postgres service — this is the ONLY DB URL in this workflow.
-      # GitHub Actions maps the `postgres` service to localhost:5432.
-      DATABASE_URL: postgresql://postgres:ci_test_pass_not_prod_12345@localhost:5432/p17_inventory_test
-      NODE_VERSION: '20'
 
 jobs:
   activity-inventory-db-gate:
@@ -80,30 +85,79 @@ jobs:
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
 
-      # ── Safety: Enforce ephemeral PG only ──────────────────────────────────────
+      # ── Safety: Enforce ephemeral PG only ────────────────────────────────────
+      # Verifies BOTH env vars exist, point to the SAME ephemeral localhost
+      # service, and contain no production fingerprints. Refuses to run if
+      # anything looks like AWS RDS or any other remote DB.
       - name: Safety check — DB must be ephemeral CI postgres
         run: |
-          echo "Checking TEST_DATABASE_URL is not production..."
-          # GitHub Actions exposes the postgres service as localhost:5432
-          # Confirm the connection string points there, NOT at production RDS
-          if echo "$DATABASE_URL" | grep -qiE 'rds\.amazonaws\.com|prod|rds-merge|rds\.us-east-1'; then
-            echo "ERROR: DATABASE_URL appears to target production RDS!"
-            echo "VALUE: $DATABASE_URL"
+          set -euo pipefail
+
+          # Helper: extract host + dbname from a postgres URL
+          url_host() { echo "$1" | sed -E 's|^postgres(ql)?://[^@]+@([^:/]+).*|\2|'; }
+          url_db()   { echo "$1" | sed -E 's|^postgres(ql)?://[^@]+@[^/]+/([^?]+).*|\2|'; }
+          url_contains_prod() { echo "$1" | grep -qiE 'rds\.amazonaws\.com|\.rds\.|rds-merge|\bprod\b|rds-prod'; }
+          # Mask password before any logging
+          url_safe() { echo "$1" | sed -E 's|://[^@]+@|://***@|'; }
+
+          # 1) Both env vars must be set
+          if [ -z "${TEST_DATABASE_URL:-}" ]; then
+            echo "ERROR: TEST_DATABASE_URL is not set. Refusing to run."
             exit 1
           fi
-          if [ -z "$DATABASE_URL" ]; then
-            echo "ERROR: DATABASE_URL is not set. Cannot run DB gate."
+          if [ -z "${DATABASE_URL:-}" ]; then
+            echo "ERROR: DATABASE_URL is not set. Refusing to run."
             exit 1
           fi
-          echo "DATABASE_URL_HOST=$(echo $DATABASE_URL | sed -E 's|.*@([^/]+)/.*|\1|')"
-          echo "DATABASE_URL_DB=$(echo $DATABASE_URL | sed -E 's|.*/([^?]+).*|\1|')"
-          echo "PRODUCTION_DB_USED=NO"
+
+          # 2) Both must be equal (no drift between test identity and helpers)
+          if [ "$TEST_DATABASE_URL" != "$DATABASE_URL" ]; then
+            echo "ERROR: TEST_DATABASE_URL != DATABASE_URL. They must be identical."
+            echo "TEST_DATABASE_URL=$(url_safe "$TEST_DATABASE_URL")"
+            echo "DATABASE_URL=$(url_safe "$DATABASE_URL")"
+            exit 1
+          fi
+
+          # 3) Both must look like the ephemeral CI service — localhost only
+          HOST="$(url_host "$DATABASE_URL")"
+          if [ "$HOST" != "localhost" ] && [ "$HOST" != "127.0.0.1" ]; then
+            echo "ERROR: DATABASE_URL host must be localhost or 127.0.0.1 (got '$HOST')."
+            echo "DATABASE_URL=$(url_safe "$DATABASE_URL")"
+            exit 1
+          fi
+
+          # 4) DB name must match the CI bootstrap target
+          DBNAME="$(url_db "$DATABASE_URL")"
+          if [ "$DBNAME" != "p17_inventory_test" ]; then
+            echo "ERROR: DATABASE_URL dbname must be 'p17_inventory_test' (got '$DBNAME')."
+            echo "DATABASE_URL=$(url_safe "$DATABASE_URL")"
+            exit 1
+          fi
+
+          # 5) Refuse anything that smells like production (extra paranoia)
+          if url_contains_prod "$DATABASE_URL"; then
+            echo "ERROR: DATABASE_URL contains production fingerprint (rds/prod). Refusing."
+            echo "DATABASE_URL=$(url_safe "$DATABASE_URL")"
+            exit 1
+          fi
+          if url_contains_prod "$TEST_DATABASE_URL"; then
+            echo "ERROR: TEST_DATABASE_URL contains production fingerprint (rds/prod). Refusing."
+            echo "TEST_DATABASE_URL=$(url_safe "$TEST_DATABASE_URL")"
+            exit 1
+          fi
+
+          # 6) Report — never echo the full URL or password
+          echo "TEST_DB_HOST=$(url_host "$DATABASE_URL")"
+          echo "TEST_DB_NAME=$(url_db "$DATABASE_URL")"
           echo "TEST_DB_TYPE=GITHUB_ACTIONS_POSTGRES_15"
-          echo "TEST_DB_LOCALHOST_ONLY=YES"
+          echo "PRODUCTION_DB_USED=NO"
+          echo "PRODUCTION_DB_SECRET_USED=NO"
 
       # ── Bootstrap CI test schema ─────────────────────────────────────────────
+      # Inherits DATABASE_URL + TEST_DATABASE_URL from workflow-level env.
       - name: Bootstrap test schema
         run: |
+          set -euo pipefail
           echo "─── Applying CI bootstrap schema ───"
           PGPASSWORD=ci_test_pass_not_prod_12345 psql \
             -h localhost \
@@ -112,10 +166,12 @@ jobs:
             -f scripts/ci_db_bootstrap.sql
           echo "─── Bootstrap complete ───"
 
-      # ── Migration: Forward ─────────────────────────────────────────────────
+      # ── Migration: Forward ────────────────────────────────────────────────────
+      # Inherits DATABASE_URL + TEST_DATABASE_URL from workflow-level env.
       - name: Migration forward — 2026-09-22-0001_activity_scoped_inventory.sql
         id: migration_forward
         run: |
+          set -euo pipefail
           echo "─── Applying migration forward ───"
           PGPASSWORD=ci_test_pass_not_prod_12345 psql \
             -h localhost \
@@ -194,10 +250,12 @@ jobs:
           echo ""
           echo "MIGRATION_FORWARD=PASS"
 
-      # ── Migration: Rollback ────────────────────────────────────────────────
+      # ── Migration: Rollback ───────────────────────────────────────────────────
+      # Inherits DATABASE_URL + TEST_DATABASE_URL from workflow-level env.
       - name: Migration rollback — DROP TABLE user_activity_inventory
         id: migration_rollback
         run: |
+          set -euo pipefail
           echo "─── Capture user_inventory schema snapshot ───"
           UI_COLS_BEFORE=$(PGPASSWORD=ci_test_pass_not_prod_12345 psql \
             -h localhost -U postgres -d p17_inventory_test \
@@ -250,14 +308,18 @@ jobs:
           echo ""
           echo "MIGRATION_ROLLBACK=PASS"
 
-      # ── A1-A20 tests via production helpers ────────────────────────────────
+      # ── A1-A20 tests via production helpers ──────────────────────────────────
+      # Inherits DATABASE_URL + TEST_DATABASE_URL from workflow-level env.
+      # The test file does: TEST_DATABASE_URL || DATABASE_URL and then forces
+      # process.env.DATABASE_URL = TEST_DB_URL before lazy-loading pg.ts helpers.
       - name: Run A1-A20 DB tests
         id: db_tests
-        env:
-          DATABASE_URL: postgresql://postgres:ci_test_pass_not_prod_12345@localhost:5432/p17_inventory_test
         run: |
+          set -euo pipefail
           echo "─── Running activity-inventory tests ───"
           echo "PRODUCTION_HELPERS_USED_IN_TESTS=YES (imports from lib/db/pg.ts)"
+          echo "TEST_DATABASE_URL_SET=$(if [ -n \"\${TEST_DATABASE_URL:-}\" ]; then echo YES; else echo NO; fi)"
+          echo "DATABASE_URL_SET=$(if [ -n \"\${DATABASE_URL:-}\" ]; then echo YES; else echo NO; fi)"
 
           npx tsx tests/unit/activity-inventory.test.mjs 2>&1
 
@@ -272,7 +334,7 @@ jobs:
             echo "DB_TESTS=PASS"
           fi
 
-      # ── Summary ─────────────────────────────────────────────────────────────
+      # ── Summary ───────────────────────────────────────────────────────────────
       - name: DB Gate Summary
         run: |
           echo ""
