@@ -1,0 +1,895 @@
+/* ════════════════════════════════════════════════════════════════════════════════
+   ADMIN PANEL — Dual Theme (Light / Dark) via CSS Variables
+   Default = dark (per spec). Toggle `.light` on <html> to switch.
+   ════════════════════════════════════════════════════════════════════════════════ */
+
+/* ── Theme Tokens ──────────────────────────────────────────────────────────── */
+:root,
+:root.dark {
+  /* Surfaces */
+  --admin-bg:            #09090B;
+  --admin-bg-elevated:   #121215;
+  --admin-bg-input:      #09090B;
+  --admin-bg-hover:      #1C1C1F;
+  --admin-bg-subtle:     #1A1A1D;
+
+  /* Borders */
+  --admin-border:        #27272A;
+  --admin-border-strong: #3F3F46;
+  --admin-border-focus:  #52525B;
+
+  /* Text */
+  --admin-text:          #E4E4E7;
+  --admin-text-strong:   #FAFAFA;
+  --admin-text-muted:    #A1A1AA;
+  --admin-text-subtle:   #71717A;
+  --admin-text-faint:    #52525B;
+  --admin-text-inverse:  #18181B;
+
+  /* Sidebar nav active (white pill) */
+  --admin-nav-active-bg:    #FAFAFA;
+  --admin-nav-active-text:  #18181B;
+
+  /* Danger */
+  --admin-danger-bg:        rgba(127, 29, 29, 0.4);
+  --admin-danger-bg-hover:  rgba(127, 29, 29, 0.6);
+  --admin-danger-border:    #7F1D1D;
+  --admin-danger-border-h:  #B91C1C;
+  --admin-danger-text:      #FECACA;
+  --admin-danger-icon:      #FCA5A5;
+
+  /* Backdrop */
+  --admin-backdrop: rgba(0, 0, 0, 0.7);
+
+  /* Calendar icon (dark needs invert=1; light needs invert=0) */
+  --admin-calendar-invert: 1;
+
+  /* Calendar icons (dark scheme) */
+  color-scheme: dark;
+}
+
+:root.light,
+.light {
+  /* Surfaces */
+  --admin-bg:            #F8FAFC;
+  --admin-bg-elevated:   #FFFFFF;
+  --admin-bg-input:      #FFFFFF;
+  --admin-bg-hover:      #F1F5F9;
+  --admin-bg-subtle:     #F8FAFC;
+
+  /* Borders */
+  --admin-border:        #E2E8F0;
+  --admin-border-strong: #CBD5E1;
+  --admin-border-focus:  #94A3B8;
+
+  /* Text */
+  --admin-text:          #334155;
+  --admin-text-strong:   #0F172A;
+  --admin-text-muted:    #64748B;
+  --admin-text-subtle:   #94A3B8;
+  --admin-text-faint:    #CBD5E1;
+  --admin-text-inverse:  #FFFFFF;
+
+  /* Sidebar nav active (dark pill on light) */
+  --admin-nav-active-bg:    #0F172A;
+  --admin-nav-active-text:  #FFFFFF;
+
+  /* Danger */
+  --admin-danger-bg:        #FEF2F2;
+  --admin-danger-bg-hover:  #FEE2E2;
+  --admin-danger-border:    #FECACA;
+  --admin-danger-border-h:  #F87171;
+  --admin-danger-text:      #B91C1C;
+  --admin-danger-icon:      #DC2626;
+
+  /* Backdrop */
+  --admin-backdrop: rgba(15, 23, 42, 0.4);
+
+  /* Calendar icon: no invert in light mode (native light icon is correct) */
+  --admin-calendar-invert: 0;
+
+  /* Calendar icons (light scheme) */
+  color-scheme: light;
+}
+
+/* ── Layout ────────────────────────────────────────────────────────────────── */
+/* REPARK 6.0 (2026-08-23): P1 viewport lock.
+   - .admin-layout is forced to viewport height with overflow:hidden, so the
+     window itself never scrolls. Page-level scrolling is delegated to the
+     sub-page root (which is always rendered into .admin-main).
+   - .admin-sidebar stays sticky at full viewport height and is its own
+     scrolling container (already true; we restate the contract).
+   - .admin-main fills the remaining space and is its own scrolling container.
+     We zero its padding and margin-left so sub-pages can paint edge-to-edge
+     (the activity config page in particular uses a 3-pane layout). The other
+     admin pages (dashboard / activities / banners / users / monitor) keep
+     their own internal padding via the dark "bridge" rules below. */
+.admin-layout {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  background: var(--admin-bg);
+  color: var(--admin-text);
+  transition: background-color 0.18s ease, color 0.18s ease;
+}
+
+/* ── Sidebar ─────────────────────────────────────────────────────────────── */
+.admin-sidebar {
+  width: 232px;
+  background: var(--admin-bg-elevated);
+  border-right: 1px solid var(--admin-border);
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 0;
+  align-self: flex-start;
+  height: 100vh;
+  overflow-y: auto;
+  flex-shrink: 0;
+  z-index: 100;
+  transition: background-color 0.18s ease, border-color 0.18s ease;
+}
+
+.admin-logo {
+  padding: 20px;
+  border-bottom: 1px solid var(--admin-border);
+}
+
+.admin-logo-text {
+  display: block;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--admin-text-strong);
+  letter-spacing: -0.01em;
+}
+
+.admin-logo-sub {
+  display: block;
+  font-size: 11px;
+  color: var(--admin-text-subtle);
+  margin-top: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.admin-nav {
+  flex: 1;
+  padding: 12px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.admin-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  color: var(--admin-text-muted);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.admin-nav-item:hover {
+  background: var(--admin-bg-hover);
+  color: var(--admin-text-strong);
+}
+
+.admin-nav-item.active {
+  background: var(--admin-nav-active-bg);
+  color: var(--admin-nav-active-text);
+}
+
+.admin-footer {
+  padding: 12px;
+  border-top: 1px solid var(--admin-border);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.admin-back-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  color: var(--admin-text-muted);
+  text-decoration: none;
+  font-size: 12px;
+  transition: background-color 0.12s ease, color 0.12s ease;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+}
+
+.admin-back-link:hover {
+  background: var(--admin-bg-hover);
+  color: var(--admin-text-strong);
+}
+
+/* ── Main Content ─────────────────────────────────────────────────────────── */
+/* REPARK 6.0 (2026-08-23): P1 viewport lock — main fills remaining space,
+   owns its scrollbar, and zeroes padding so sub-pages can flush. The
+   non-config pages (dashboard / activities list / banners / users /
+   monitor) historically inherited 32×40 padding here; we restore that
+   per-page via the `.admin-main-padded` opt-in modifier so layout change
+   is backwards compatible. */
+.admin-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  margin-left: 0;             /* sidebar is no longer pushed via margin; it's a flex sibling */
+  padding: 0;                 /* let pages own their padding */
+}
+
+.admin-main-padded {
+  padding: 32px 40px;
+}
+
+@media (max-width: 768px) {
+  .admin-main-padded {
+    padding: 20px 16px;
+  }
+}
+
+/* ── Page Header ──────────────────────────────────────────────────────────── */
+.admin-page-header {
+  margin-bottom: 28px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.admin-page-title {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--admin-text-strong);
+  margin: 0 0 4px 0;
+  letter-spacing: -0.01em;
+}
+
+.admin-page-desc {
+  font-size: 13px;
+  color: var(--admin-text-subtle);
+  margin: 0;
+}
+
+/* ── Cards ───────────────────────────────────────────────────────────────── */
+.admin-card {
+  background: var(--admin-bg-elevated);
+  border: 1px solid var(--admin-border);
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 16px;
+  transition: background-color 0.18s ease, border-color 0.18s ease;
+}
+
+.admin-card-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--admin-text);
+  margin: 0 0 16px 0;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--admin-border);
+}
+
+/* ── Form Elements ───────────────────────────────────────────────────────── */
+.admin-form-group {
+  margin-bottom: 16px;
+}
+
+.admin-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--admin-text-muted);
+  margin-bottom: 6px;
+}
+
+.admin-input {
+  width: 100%;
+  padding: 9px 12px;
+  background: var(--admin-bg-input);
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+  color: var(--admin-text-strong);
+  font-size: 13px;
+  transition: border-color 0.12s ease, background-color 0.18s ease;
+  font-family: inherit;
+}
+
+.admin-input:focus {
+  outline: none;
+  border-color: var(--admin-border-focus);
+}
+
+.admin-input::placeholder {
+  color: var(--admin-text-faint);
+}
+
+.admin-textarea {
+  width: 100%;
+  padding: 9px 12px;
+  background: var(--admin-bg-input);
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+  color: var(--admin-text-strong);
+  font-size: 13px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  resize: vertical;
+  min-height: 80px;
+  transition: border-color 0.12s ease, background-color 0.18s ease;
+}
+
+.admin-textarea:focus {
+  outline: none;
+  border-color: var(--admin-border-focus);
+}
+
+/* ── Buttons ──────────────────────────────────────────────────────────────── */
+.admin-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.12s ease, border-color 0.12s ease, opacity 0.12s ease, color 0.18s ease;
+  border: 1px solid transparent;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.admin-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Primary — high-contrast (white in dark, dark in light) */
+.admin-btn-primary {
+  background: var(--admin-text-strong);
+  color: var(--admin-text-inverse);
+  border-color: var(--admin-text-strong);
+}
+
+.admin-btn-primary:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+/* Secondary — outlined ghost */
+.admin-btn-secondary {
+  background: transparent;
+  color: var(--admin-text);
+  border-color: var(--admin-border-strong);
+}
+
+.admin-btn-secondary:hover:not(:disabled) {
+  background: var(--admin-bg-hover);
+  border-color: var(--admin-border-focus);
+}
+
+/* Danger — muted red, no shouting */
+.admin-btn-danger {
+  background: var(--admin-danger-bg);
+  color: var(--admin-danger-text);
+  border-color: var(--admin-danger-border);
+}
+
+.admin-btn-danger:hover:not(:disabled) {
+  background: var(--admin-danger-bg-hover);
+  border-color: var(--admin-danger-border-h);
+}
+
+.admin-btn-sm {
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+/* ── Icon Buttons ─────────────────────────────────────────────────────────── */
+.admin-btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.12s ease, color 0.12s ease;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--admin-text-muted);
+}
+
+.admin-btn-icon:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.admin-btn-icon-success {
+  color: var(--admin-text);
+  border-color: var(--admin-border-strong);
+}
+
+.admin-btn-icon-success:hover:not(:disabled) {
+  background: var(--admin-bg-hover);
+  border-color: var(--admin-border-focus);
+}
+
+.admin-btn-icon-danger {
+  color: var(--admin-danger-icon);
+  border-color: var(--admin-danger-border);
+}
+
+.admin-btn-icon-danger:hover:not(:disabled) {
+  background: var(--admin-danger-bg);
+  border-color: var(--admin-danger-border-h);
+}
+
+/* ── Tables ──────────────────────────────────────────────────────────────── */
+.admin-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.admin-table th,
+.admin-table td {
+  text-align: left;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--admin-border);
+}
+
+.admin-table th {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--admin-text-subtle);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: var(--admin-bg);
+  border-bottom: 1px solid var(--admin-border);
+}
+
+.admin-table tr:last-child td {
+  border-bottom: none;
+}
+
+.admin-table tr:hover td {
+  background: var(--admin-bg-subtle);
+}
+
+/* ── Status Badges ───────────────────────────────────────────────────────── */
+.admin-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  border: 1px solid;
+}
+
+.admin-badge-success {
+  background: var(--admin-bg-input);
+  color: var(--admin-text-muted);
+  border-color: var(--admin-border-strong);
+}
+
+.admin-badge-warning {
+  background: var(--admin-bg-hover);
+  color: var(--admin-text);
+  border-color: var(--admin-border-focus);
+}
+
+.admin-badge-danger {
+  background: var(--admin-danger-bg);
+  color: var(--admin-danger-text);
+  border-color: var(--admin-danger-border);
+}
+
+/* ── Stats Grid ──────────────────────────────────────────────────────────── */
+.admin-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.admin-stat-card {
+  background: var(--admin-bg-elevated);
+  border: 1px solid var(--admin-border);
+  border-radius: 10px;
+  padding: 16px 18px;
+  transition: background-color 0.18s ease, border-color 0.18s ease;
+}
+
+.admin-stat-value {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--admin-text-strong);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  letter-spacing: -0.02em;
+}
+
+.admin-stat-label {
+  font-size: 11px;
+  color: var(--admin-text-subtle);
+  margin-top: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ── Tabs ───────────────────────────────────────────────────────────────── */
+.admin-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--admin-border);
+}
+
+.admin-tab {
+  padding: 8px 14px;
+  font-size: 13px;
+  color: var(--admin-text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color 0.12s ease, border-color 0.12s ease;
+  font-family: inherit;
+  font-weight: 500;
+}
+
+.admin-tab:hover {
+  color: var(--admin-text);
+}
+
+.admin-tab.active {
+  color: var(--admin-text-strong);
+  border-bottom-color: var(--admin-text-strong);
+}
+
+/* ── Alert ──────────────────────────────────────────────────────────────── */
+.admin-alert {
+  padding: 12px 14px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 13px;
+  border: 1px solid;
+}
+
+.admin-alert-success {
+  background: var(--admin-bg-elevated);
+  border-color: var(--admin-border-strong);
+  color: var(--admin-text);
+}
+
+.admin-alert-error {
+  background: var(--admin-danger-bg);
+  border-color: var(--admin-danger-border);
+  color: var(--admin-danger-text);
+}
+
+/* ── Modal ──────────────────────────────────────────────────────────────── */
+.admin-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: var(--admin-backdrop);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.admin-modal {
+  background: var(--admin-bg-elevated);
+  border: 1px solid var(--admin-border);
+  border-radius: 12px;
+  width: 100%;
+  max-width: 420px;
+  padding: 24px;
+  color: var(--admin-text);
+  transition: background-color 0.18s ease, border-color 0.18s ease;
+}
+
+.admin-modal-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--admin-text-strong);
+  margin: 0 0 8px 0;
+}
+
+.admin-modal-desc {
+  font-size: 13px;
+  color: var(--admin-text-muted);
+  margin: 0 0 20px 0;
+  line-height: 1.5;
+}
+
+.admin-modal-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+/* ── Utility ─────────────────────────────────────────────────────────────── */
+.admin-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid var(--admin-border-strong);
+  border-top-color: var(--admin-text-strong);
+  border-radius: 50%;
+  animation: admin-spin 0.7s linear infinite;
+}
+
+@keyframes admin-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .admin-sidebar {
+    width: 200px;
+  }
+}
+
+/* ── Sticky search bar (users page, Batch A) ──────────────────────────────
+   Renders sticky at the top of .admin-main (which is the page's scroll
+   container). Background must be opaque so the scrolling user table does
+   not bleed through. Border-bottom gives a soft separation. z-index sits
+   below the sidebar (z:100) so the sidebar still wins on overlap. */
+.admin-sticky-search {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: var(--admin-bg);
+  border-bottom: 1px solid var(--admin-border);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+/* Light-mode bridge for the sticky bar background. */
+.light .admin-layout .admin-sticky-search {
+  background: var(--admin-bg-elevated);
+}
+
+/* ── Dark-mode calendar icon fix (overridden in :root.light) ─────────────── */
+input[type="datetime-local"],
+input[type="date"],
+input[type="time"] {
+  color-scheme: inherit;
+}
+
+input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(var(--admin-calendar-invert, 1));
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+}
+
+input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover,
+input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════════
+   LIGHT-MODE BRIDGE — Override hardcoded Tailwind utilities from page bodies.
+   The 4 refactored pages (dashboard / activities / banners / monitor) still use
+   inline Tailwind classes like `bg-zinc-900/40` that were tuned for dark mode.
+   Instead of touching each page, we globally remap the most common zinc/gray
+   tokens to slate equivalents when .light is active on the html root.
+   Only affects elements inside `.admin-layout` so login page (outside layout)
+   keeps its brand-locked dark look.
+   ════════════════════════════════════════════════════════════════════════════════ */
+
+/* Backgrounds: dark zinc → light slate */
+.light .admin-layout .bg-zinc-950,
+.light .admin-layout .bg-zinc-900,
+.light .admin-layout .bg-zinc-900\/40,
+.light .admin-layout .bg-zinc-900\/60,
+.light .admin-layout .bg-zinc-900\/30,
+.light .admin-layout .bg-zinc-900\/20,
+.light .admin-layout .bg-zinc-800,
+.light .admin-layout .bg-zinc-800\/50,
+.light .admin-layout .bg-zinc-800\/60,
+.light .admin-layout .bg-zinc-800\/40 {
+  background-color: var(--admin-bg-elevated);
+}
+
+.light .admin-layout .bg-zinc-800\/60 {
+  background-color: rgba(241, 245, 249, 0.6);
+}
+
+/* Inputs / borders */
+.light .admin-layout .border-zinc-800,
+.light .admin-layout .border-zinc-800\/80,
+.light .admin-layout .border-zinc-800\/60,
+.light .admin-layout .border-zinc-700,
+.light .admin-layout .border-zinc-700\/50,
+.light .admin-layout .border-zinc-700\/60,
+.light .admin-layout .border-zinc-600,
+.light .admin-layout .divide-zinc-800 > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--admin-border);
+}
+
+.light .admin-layout .border-zinc-700\/30 { border-color: var(--admin-border); }
+
+/* Text colors */
+.light .admin-layout .text-zinc-100 { color: #0F172A; }
+.light .admin-layout .text-zinc-200 { color: #1E293B; }
+.light .admin-layout .text-zinc-300 { color: #334155; }
+.light .admin-layout .text-zinc-400 { color: #64748B; }
+.light .admin-layout .text-zinc-500 { color: #94A3B8; }
+.light .admin-layout .text-zinc-600 { color: #94A3B8; }
+.light .admin-layout .text-zinc-700 { color: #CBD5E1; }
+
+/* Placeholders */
+.light .admin-layout input::placeholder,
+.light .admin-layout textarea::placeholder {
+  color: #94A3B8;
+}
+
+/* Hover backgrounds */
+.light .admin-layout .hover\:bg-zinc-800:hover,
+.light .admin-layout .hover\:bg-zinc-900:hover {
+  background-color: #F1F5F9;
+}
+
+.light .admin-layout .hover\:border-zinc-600:hover,
+.light .admin-layout .hover\:border-zinc-700:hover {
+  border-color: #94A3B8;
+}
+
+.light .admin-layout .hover\:text-zinc-100:hover { color: #0F172A; }
+.light .admin-layout .hover\:text-zinc-300:hover { color: #334155; }
+
+/* Spinner skeleton (animate-pulse) */
+.light .admin-layout .bg-zinc-800.animate-pulse,
+.light .admin-layout .bg-zinc-900.animate-pulse {
+  background-color: #E2E8F0 !important;
+}
+
+/* Spinner color tokens (Loader2 spin) */
+.light .admin-layout .text-zinc-500.animate-spin,
+.light .admin-layout .text-zinc-600.animate-spin {
+  color: #94A3B8;
+}
+
+/* Toast container (rendered via portal — already theme-aware via JS) */
+
+/* Hardcoded hex backgrounds still scattered in page code */
+.light .admin-layout .bg-\[\#121215\],
+.light .admin-layout .bg-\[\#09090B\],
+.light .admin-layout .bg-\[\#0d1117\] {
+  background-color: var(--admin-bg-elevated);
+}
+
+.light .admin-layout .bg-\[\#161b22\] {
+  background-color: var(--admin-bg);
+}
+
+/* ════════════════════════════════════════════════════════════════════════════════
+   LIGHT-MODE BRIDGE v2 — Users + Config pages.
+   These two pages never received the admin.css refactor; they still hardcode
+   GitHub-style hex tokens (#0d1117 / #161b22 / #21262d / #30363d / #484f58 / #8b949e)
+   and old Tailwind palette names. We bridge them to light equivalents here so the
+   pages render correctly when .light is active on <html>, without touching the
+   page files.
+   ════════════════════════════════════════════════════════════════════════════════ */
+
+/* Backgrounds (dark hex → light surface) */
+.light .admin-layout .bg-\[\#0d1117\],
+.light .admin-layout .bg-\[\#0d1117\]\/50,
+.light .admin-layout .bg-\[\#0d1117\]\/60,
+.light .admin-layout .bg-\[\#0d1117\]\/95 {
+  background-color: #FFFFFF;
+}
+.light .admin-layout .bg-\[\#0d1117\]\/50 {
+  background-color: rgba(255, 255, 255, 0.85);
+}
+.light .admin-layout .bg-\[\#0d1117\]\/60 {
+  background-color: rgba(255, 255, 255, 0.7);
+}
+.light .admin-layout .bg-\[\#0d1117\]\/95 {
+  background-color: rgba(255, 255, 255, 0.96);
+}
+
+.light .admin-layout .bg-\[\#161b22\],
+.light .admin-layout .bg-\[\#161b22\]\/30,
+.light .admin-layout .bg-\[\#161b22\]\/50 {
+  background-color: #F1F5F9;
+}
+.light .admin-layout .bg-\[\#161b22\]\/30 {
+  background-color: rgba(241, 245, 249, 0.5);
+}
+.light .admin-layout .bg-\[\#161b22\]\/50 {
+  background-color: rgba(241, 245, 249, 0.7);
+}
+
+.light .admin-layout .bg-\[\#21262d\] {
+  background-color: #E2E8F0;
+}
+
+.light .admin-layout .bg-\[\#484f58\]\/5,
+.light .admin-layout .bg-\[\#484f58\]\/15,
+.light .admin-layout .bg-\[\#484f58\]\/25 {
+  background-color: rgba(15, 23, 42, 0.05);
+}
+.light .admin-layout .bg-\[\#484f58\]\/15 {
+  background-color: rgba(15, 23, 42, 0.08);
+}
+.light .admin-layout .bg-\[\#484f58\]\/25 {
+  background-color: rgba(15, 23, 42, 0.12);
+}
+
+/* Borders (dark hex → light grey) */
+.light .admin-layout .border-\[\#30363d\],
+.light .admin-layout .border-\[\#30363d\]\/30,
+.light .admin-layout .border-\[\#30363d\]\/50,
+.light .admin-layout .border-\[\#30363d\]\/60,
+.light .admin-layout .border-\[\#30363d\]\/80 {
+  border-color: #E2E8F0;
+}
+.light .admin-layout .border-\[\#21262d\] {
+  border-color: #E2E8F0;
+}
+.light .admin-layout .border-\[\#484f58\]\/30,
+.light .admin-layout .border-\[\#484f58\]\/50 {
+  border-color: rgba(15, 23, 42, 0.15);
+}
+
+/* Text colors (dark hex → light contrast) */
+.light .admin-layout .text-\[\#8b949e\] { color: #64748B; }
+.light .admin-layout .text-\[\#484f58\] { color: #94A3B8; }
+.light .admin-layout .text-\[\#21262d\] { color: #334155; }
+.light .admin-layout .text-white           { color: #0F172A; }
+.light .admin-layout .hover\:text-white:hover { color: #0F172A; }
+.light .admin-layout .text-gray-500        { color: #64748B; }
+.light .admin-layout .text-gray-400        { color: #94A3B8; }
+.light .admin-layout .text-gray-300        { color: #334155; }
+.light .admin-layout .placeholder-gray-500::placeholder { color: #94A3B8; }
+
+/* Tailwind utilities used by these pages */
+.light .admin-layout .border-gray-500       { border-color: #94A3B8; }
+.light .admin-layout .border-zinc-300       { border-color: #CBD5E1; }
+
+/* Animated skeleton / spinner hex */
+.light .admin-layout .bg-\[\#21262d\]\.animate-pulse {
+  background-color: #E2E8F0 !important;
+}
+
+/* Backdrop for modals (was bg-black/70) */
+.light .admin-layout .bg-black\/70 {
+  background-color: rgba(15, 23, 42, 0.45);
+}
+
+/* Inputs / textareas inside dark-hex containers: ensure placeholder is visible */
+.light .admin-layout input.bg-\[\#0d1117\]::placeholder,
+.light .admin-layout textarea.bg-\[\#0d1117\]::placeholder,
+.light .admin-layout input.bg-\[\#161b22\]::placeholder,
+.light .admin-layout textarea.bg-\[\#161b22\]::placeholder {
+  color: #94A3B8;
+}
+
+/* Tailwind rose/red overrides for "danger" labels in light mode */
+.light .admin-layout .text-red-400  { color: #DC2626; }
+.light .admin-layout .text-red-300  { color: #DC2626; }
+.light .admin-layout .text-pink-400 { color: #BE185D; }
+.light .admin-layout .text-pink-200 { color: #BE185D; }

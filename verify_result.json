@@ -1,0 +1,17 @@
+{
+  "success": true,
+  "canvas": {
+    "count": 1,
+    "hasActive": true,
+    "widths": [
+      1280
+    ],
+    "heights": [
+      720
+    ]
+  },
+  "consoleErrorCount": 0,
+  "consoleErrors": [],
+  "screenshot": "H:\\PROJECT\\P17_H5meimo-demo\\verify_result.png",
+  "timestamp": "2026-04-23T18:14:04.513Z"
+}

@@ -1,0 +1,104 @@
+# ────────────────────────────────────────────────────────────────────────────
+# Docker build context boundary — P17 H5 魅魔来袭
+#
+# Purpose: prevent secret, build artefact, log, and ephemeral debug files
+#          from being sent to the Docker daemon during `docker build`.
+#
+# This file is independent of .gitignore:
+#   - .gitignore controls what Git tracks
+#   - .dockerignore controls what COPY/ADD uploads to the builder
+#   - .cursorignore controls what Cursor indexes
+#
+# Missing or weak .dockerignore is a security boundary, not a convenience.
+# Review every change that adds/expands a pattern.
+# ────────────────────────────────────────────────────────────────────────────
+
+# ── Source secrets ────────────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# SSH keys, deploy credentials, archived credentials
+keys/
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+admin-pw.txt
+admin-pw.*.txt
+*.archived
+*.archived.pem
+.ssh/
+.aws/
+secrets/
+service-account*.json
+
+# ── Build artefacts & caches ──────────────────────────────────────────────────
+.git
+.gitignore
+.github
+.gitattributes
+
+node_modules
+.next
+.next/
+out
+build
+dist
+coverage
+.turbo
+.cache
+.tsbuildinfo
+*.tsbuildinfo
+
+# ── Logs, temp, and ephemeral debug ──────────────────────────────────────────
+*.log
+logs/
+tmp/
+temp-*.mjs
+temp-*.cjs
+temp-*.py
+*.bak
+*.tmp
+*.temp
+*.swp
+*.swo
+*.orig
+*.rej
+*.old
+.last-run.json
+
+# ── Test & CI artefacts ──────────────────────────────────────────────────────
+test-results
+playwright-report
+.playwright
+.nyc_output
+bench-results.xml
+junit*.xml
+verify_result.json
+verify_result.png
+
+# ── Tooling-specific metadata ────────────────────────────────────────────────
+.cursor
+.cursorignore
+.cursorrules
+.idea
+.vscode
+agent-transcripts
+
+# ── Source-owned paths that must NEVER end up inside the image ──────────────
+# Deployment / SSH / hotfix scripts (use the production build artefact, not the
+# deploy toolchain).
+deploy.sh
+scripts/_*
+scripts/temp-*
+scripts/_archive
+H5 000
+docs
+ACTIVE_CONTEXT.md
+CLEANUP_AUDIT.md
+
+# ── Runtime uploads (created at runtime, not part of the source tree) ───────
+public/uploads

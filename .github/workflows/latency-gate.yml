@@ -1,0 +1,107 @@
+# GitHub Actions workflow for P17 latency gate.
+# Add to .github/workflows/latency-gate.yml
+
+name: latency-gate
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'app/api/action/**'
+      - 'app/api/battle/**'
+      - 'lib/redis.ts'
+      - 'lib/db/**'
+  schedule:
+    # Weekly Monday 09:00 UTC check (catches infra drift)
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+
+jobs:
+  attack-latency:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: benchpass
+          POSTGRES_DB: benchdb
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://postgres:benchpass@localhost:5432/benchdb
+      REDIS_URL: redis://localhost:6379
+      ADMIN_SECRET_KEY: bench-admin-secret-do-not-use-in-prod-1234567890
+      OWNER_COMMAND_KEY: ''
+      NODE_ENV: production
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install
+        run: npm ci --legacy-peer-deps
+
+      - name: Migrate schema (best effort)
+        run: |
+          if [ -f scripts/bench_schema.sql ]; then
+            PGPASSWORD=benchpass psql -h localhost -U postgres -d benchdb -f scripts/bench_schema.sql || true
+          fi
+
+      - name: Build
+        run: npm run build:no-lint
+
+      - name: Start production server
+        run: |
+          nohup npx next start -p 3000 > prod-server.log 2>&1 &
+          echo $! > .prod.pid
+          # Wait for readiness
+          for i in {1..30}; do
+            curl -sf http://localhost:3000/api/time > /dev/null && break
+            sleep 1
+          done
+
+      - name: Run attack latency benchmark
+        run: |
+          BENCH_URL=http://localhost:3000 \
+          BENCH_SAMPLE=200 \
+          node scripts/bench_attack.mjs --format=junit --gate --output=bench-results.xml
+
+      - name: Publish JUnit report
+        if: always()
+        uses: mikepenz/action-junit-report@v4
+        with:
+          report_paths: bench-results.xml
+
+      - name: Upload log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bench-logs
+          path: |
+            prod-server.log
+            bench-results.xml
+
+      - name: Stop server
+        if: always()
+        run: |
+          if [ -f .prod.pid ]; then kill "$(cat .prod.pid)" || true; fi

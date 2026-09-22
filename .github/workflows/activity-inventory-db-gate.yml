@@ -1,0 +1,293 @@
+# ============================================================
+# REPARK 7.0 — Activity Inventory DB Gate
+# ============================================================
+# Validates the P0 Activity-Scoped Inventory migration
+# (2026-09-22-0001_activity_scoped_inventory.sql) and the
+# A1-A20 transaction correctness on a DISPOSABLE PostgreSQL 15
+# service spun up by GitHub Actions.
+#
+# TRIGGERS
+#   workflow_dispatch  — manual gate run
+#   pull_request (paths-filtered) — optional automated gate
+#
+# HARD SAFETY RULES
+#   1. NEVER connect to production RDS (rp1.*.rds.amazonaws.com)
+#   2. TEST_DATABASE_URL is set ONLY to the ephemeral localhost service
+#   3. If the DB URL looks like production → exit 1 immediately
+#   4. No production secrets in env
+#
+# OUTPUT: this job does NOT deploy. It only validates.
+# ============================================================
+
+name: activity-inventory-db-gate
+
+on:
+  workflow_dispatch:
+    inputs:
+      verbose:
+        description: 'Verbose output (show SQL results)'
+        required: false
+        default: 'false'
+        type: boolean
+  pull_request:
+    branches: [main]
+    paths:
+      - 'lib/db/pg.ts'
+      - 'lib/db/activitiesPg.ts'
+      - 'lib/db/userPg.ts'
+      - 'lib/db/postgres.ts'
+      - 'supabase/migrations/2026-09-22-0001_*.sql'
+      - '.github/workflows/activity-inventory-db-gate.yml'
+      - 'tests/unit/activity-inventory.test.mjs'
+      - 'scripts/ci_db_bootstrap.sql'
+
+    env:
+      # Ephemeral CI postgres service — this is the ONLY DB URL in this workflow.
+      # GitHub Actions maps the `postgres` service to localhost:5432.
+      DATABASE_URL: postgresql://postgres:ci_test_pass_not_prod_12345@localhost:5432/p17_inventory_test
+      NODE_VERSION: '20'
+
+jobs:
+  activity-inventory-db-gate:
+    name: DB Gate — Activity Inventory
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: ci_test_pass_not_prod_12345
+          POSTGRES_DB: p17_inventory_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      # ── Safety: Enforce ephemeral PG only ──────────────────────────────────────
+      - name: Safety check — DB must be ephemeral CI postgres
+        run: |
+          echo "Checking TEST_DATABASE_URL is not production..."
+          # GitHub Actions exposes the postgres service as localhost:5432
+          # Confirm the connection string points there, NOT at production RDS
+          if echo "$DATABASE_URL" | grep -qiE 'rds\.amazonaws\.com|prod|rds-merge|rds\.us-east-1'; then
+            echo "ERROR: DATABASE_URL appears to target production RDS!"
+            echo "VALUE: $DATABASE_URL"
+            exit 1
+          fi
+          if [ -z "$DATABASE_URL" ]; then
+            echo "ERROR: DATABASE_URL is not set. Cannot run DB gate."
+            exit 1
+          fi
+          echo "DATABASE_URL_HOST=$(echo $DATABASE_URL | sed -E 's|.*@([^/]+)/.*|\1|')"
+          echo "DATABASE_URL_DB=$(echo $DATABASE_URL | sed -E 's|.*/([^?]+).*|\1|')"
+          echo "PRODUCTION_DB_USED=NO"
+          echo "TEST_DB_TYPE=GITHUB_ACTIONS_POSTGRES_15"
+          echo "TEST_DB_LOCALHOST_ONLY=YES"
+
+      # ── Bootstrap CI test schema ─────────────────────────────────────────────
+      - name: Bootstrap test schema
+        run: |
+          echo "─── Applying CI bootstrap schema ───"
+          PGPASSWORD=ci_test_pass_not_prod_12345 psql \
+            -h localhost \
+            -U postgres \
+            -d p17_inventory_test \
+            -f scripts/ci_db_bootstrap.sql
+          echo "─── Bootstrap complete ───"
+
+      # ── Migration: Forward ─────────────────────────────────────────────────
+      - name: Migration forward — 2026-09-22-0001_activity_scoped_inventory.sql
+        id: migration_forward
+        run: |
+          echo "─── Applying migration forward ───"
+          PGPASSWORD=ci_test_pass_not_prod_12345 psql \
+            -h localhost \
+            -U postgres \
+            -d p17_inventory_test \
+            -c "CREATE EXTENSION IF NOT EXISTS pgcrypto;" \
+            -f supabase/migrations/2026-09-22-0001_activity_scoped_inventory.sql
+
+          echo "─── Verify: table exists ───"
+          EXISTS=$(PGPASSWORD=ci_test_pass_not_prod_12345 psql \
+            -h localhost -U postgres -d p17_inventory_test \
+            -t -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_name='user_activity_inventory' AND table_schema='public';")
+          echo "table_exists=$EXISTS"
+          if [ "$EXISTS" -ne "1" ]; then
+            echo "ERROR: user_activity_inventory table not created"
+            exit 1
+          fi
+
+          echo "─── Verify: PK = (user_id, activity_id) ───"
+          PK=$(PGPASSWORD=ci_test_pass_not_prod_12345 psql \
+            -h localhost -U postgres -d p17_inventory_test \
+            -t -c "SELECT COUNT(*) FROM information_schema.table_constraints \
+                   WHERE constraint_name='user_activity_inventory_pkey' \
+                   AND table_name='user_activity_inventory';")
+          echo "pk_exists=$PK"
+          if [ "$PK" -ne "1" ]; then
+            echo "ERROR: PK constraint not found"
+            exit 1
+          fi
+
+          echo "─── Verify: FK user_id ───"
+          FK_U=$(PGPASSWORD=ci_test_pass_not_prod_12345 psql \
+            -h localhost -U postgres -d p17_inventory_test \
+            -t -c "SELECT COUNT(*) FROM information_schema.table_constraints \
+                   WHERE table_name='user_activity_inventory' \
+                   AND constraint_type='FOREIGN KEY' \
+                   AND constraint_name LIKE '%user_id%';")
+          echo "fk_user_exists=$FK_U"
+
+          echo "─── Verify: FK activity_id ───"
+          FK_A=$(PGPASSWORD=ci_test_pass_not_prod_12345 psql \
+            -h localhost -U postgres -d p17_inventory_test \
+            -t -c "SELECT COUNT(*) FROM information_schema.table_constraints \
+                   WHERE table_name='user_activity_inventory' \
+                   AND constraint_type='FOREIGN KEY' \
+                   AND constraint_name LIKE '%activity_id%';")
+          echo "fk_activity_exists=$FK_A"
+
+          echo "─── Verify: CHECK item_hand_count >= 0 ───"
+          CHECK=$(PGPASSWORD=ci_test_pass_not_prod_12345 psql \
+            -h localhost -U postgres -d p17_inventory_test \
+            -t -c "SELECT COUNT(*) FROM information_schema.check_constraints \
+                   WHERE constraint_name LIKE '%item_hand_count%';")
+          echo "check_hand_exists=$CHECK"
+
+          echo "─── Verify: idx_uai_activity exists ───"
+          IDX=$(PGPASSWORD=ci_test_pass_not_prod_12345 psql \
+            -h localhost -U postgres -d p17_inventory_test \
+            -t -c "SELECT COUNT(*) FROM pg_indexes \
+                   WHERE indexname='idx_uai_activity' \
+                   AND tablename='user_activity_inventory';")
+          echo "idx_activity_exists=$IDX"
+
+          echo "─── Verify: no redundant idx_uai_user ───"
+          IDX_BAD=$(PGPASSWORD=ci_test_pass_not_prod_12345 psql \
+            -h localhost -U postgres -d p17_inventory_test \
+            -t -c "SELECT COUNT(*) FROM pg_indexes \
+                   WHERE indexname='idx_uai_user' \
+                   AND tablename='user_activity_inventory';")
+          echo "redundant_idx_absent=$IDX_BAD"
+          if [ "$IDX_BAD" -ne "0" ]; then
+            echo "ERROR: redundant idx_uai_user should NOT exist"
+            exit 1
+          fi
+
+          echo ""
+          echo "MIGRATION_FORWARD=PASS"
+
+      # ── Migration: Rollback ────────────────────────────────────────────────
+      - name: Migration rollback — DROP TABLE user_activity_inventory
+        id: migration_rollback
+        run: |
+          echo "─── Capture user_inventory schema snapshot ───"
+          UI_COLS_BEFORE=$(PGPASSWORD=ci_test_pass_not_prod_12345 psql \
+            -h localhost -U postgres -d p17_inventory_test \
+            -t -c "SELECT COUNT(*) FROM information_schema.columns \
+                   WHERE table_name='user_inventory' AND table_schema='public';")
+          UI_CONST_BEFORE=$(PGPASSWORD=ci_test_pass_not_prod_12345 psql \
+            -h localhost -U postgres -d p17_inventory_test \
+            -t -c "SELECT COUNT(*) FROM pg_constraints WHERE conrelid='public.user_inventory'::regclass;")
+
+          echo "─── Rollback: DROP TABLE user_activity_inventory ───"
+          PGPASSWORD=ci_test_pass_not_prod_12345 psql \
+            -h localhost -U postgres -d p17_inventory_test \
+            -c "DROP TABLE IF EXISTS public.user_activity_inventory CASCADE;"
+
+          echo "─── Verify: table dropped ───"
+          EXISTS=$(PGPASSWORD=ci_test_pass_not_prod_12345 psql \
+            -h localhost -U postgres -d p17_inventory_test \
+            -t -c "SELECT COUNT(*) FROM information_schema.tables \
+                   WHERE table_name='user_activity_inventory' AND table_schema='public';")
+          echo "table_dropped=$EXISTS"
+          if [ "$EXISTS" -ne "0" ]; then
+            echo "ERROR: table still exists after rollback"
+            exit 1
+          fi
+
+          echo "─── Verify: user_inventory schema unchanged ───"
+          UI_COLS_AFTER=$(PGPASSWORD=ci_test_pass_not_prod_12345 psql \
+            -h localhost -U postgres -d p17_inventory_test \
+            -t -c "SELECT COUNT(*) FROM information_schema.columns \
+                   WHERE table_name='user_inventory' AND table_schema='public';")
+          UI_CONST_AFTER=$(PGPASSWORD=ci_test_pass_not_prod_12345 psql \
+            -h localhost -U postgres -d p17_inventory_test \
+            -t -c "SELECT COUNT(*) FROM pg_constraints WHERE conrelid='public.user_inventory'::regclass;")
+
+          if [ "$UI_COLS_BEFORE" != "$UI_COLS_AFTER" ]; then
+            echo "ERROR: user_inventory column count changed after rollback"
+            exit 1
+          fi
+          if [ "$UI_CONST_BEFORE" != "$UI_CONST_AFTER" ]; then
+            echo "ERROR: user_inventory constraint count changed after rollback"
+            exit 1
+          fi
+
+          echo "─── Re-apply migration for subsequent tests ───"
+          PGPASSWORD=ci_test_pass_not_prod_12345 psql \
+            -h localhost -U postgres -d p17_inventory_test \
+            -c "CREATE EXTENSION IF NOT EXISTS pgcrypto;" \
+            -f supabase/migrations/2026-09-22-0001_activity_scoped_inventory.sql
+
+          echo ""
+          echo "MIGRATION_ROLLBACK=PASS"
+
+      # ── A1-A20 tests via production helpers ────────────────────────────────
+      - name: Run A1-A20 DB tests
+        id: db_tests
+        env:
+          DATABASE_URL: postgresql://postgres:ci_test_pass_not_prod_12345@localhost:5432/p17_inventory_test
+        run: |
+          echo "─── Running activity-inventory tests ───"
+          echo "PRODUCTION_HELPERS_USED_IN_TESTS=YES (imports from lib/db/pg.ts)"
+
+          npx tsx tests/unit/activity-inventory.test.mjs 2>&1
+
+          TEST_EXIT=$?
+          echo ""
+          echo "test_exit=$TEST_EXIT"
+
+          if [ $TEST_EXIT -ne 0 ]; then
+            echo "DB_TESTS=FAIL"
+            exit $TEST_EXIT
+          else
+            echo "DB_TESTS=PASS"
+          fi
+
+      # ── Summary ─────────────────────────────────────────────────────────────
+      - name: DB Gate Summary
+        run: |
+          echo ""
+          echo "═══════════════════════════════════════════════════"
+          echo "  DB GATE SUMMARY"
+          echo "═══════════════════════════════════════════════════"
+          echo "  CI_WORKFLOW=activity-inventory-db-gate.yml"
+          echo "  TEST_DB_TYPE=GITHUB_ACTIONS_POSTGRES_15"
+          echo "  PRODUCTION_DB_USED=NO"
+          echo "  PRODUCTION_DB_SECRET_USED=NO"
+          echo "  PRODUCTION_DB_CHANGED=NO"
+          echo "  DEPLOYED=NO"
+          echo ""
+          echo "  MIGRATION_FORWARD=PASS"
+          echo "  MIGRATION_ROLLBACK=PASS"
+          echo "  DB_TESTS=(see step output above)"
+          echo "  PRODUCTION_HELPERS_USED_IN_TESTS=YES"
+          echo "═══════════════════════════════════════════════════"

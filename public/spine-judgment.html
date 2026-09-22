@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spine Clean-Room Judgment — idle_1</title>
+
+  <!-- Spine Player styles — from jsdelivr to avoid Tracking Prevention blocks -->
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/@esotericsoftware/spine-player@4.1.0/dist/spine-player.css"
+  />
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0d0d0f;
+      color: #e8e8f0;
+      font-family: 'Courier New', monospace;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 24px 16px;
+    }
+
+    h1 {
+      font-size: 14px;
+      font-weight: normal;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #8888aa;
+      margin-bottom: 6px;
+    }
+
+    h2 {
+      font-size: 11px;
+      font-weight: normal;
+      color: #44445a;
+      letter-spacing: 0.08em;
+      margin-bottom: 24px;
+    }
+
+    #player-container {
+      width: 100%;
+      max-width: 900px;
+      height: 80vh;
+      border: 1px solid #2a2a3a;
+      border-radius: 6px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    #status {
+      margin-top: 12px;
+      font-size: 11px;
+      color: #555566;
+      letter-spacing: 0.06em;
+      text-align: center;
+    }
+
+    #status .ok  { color: #44ff88; }
+    #status .err { color: #ff4455; }
+  </style>
+</head>
+<body>
+
+  <h1>Spine Clean-Room Validator</h1>
+  <h2>idle_1 &mdash; Official ES Spine Player 4.1.0 &mdash; RAW Data Test</h2>
+
+  <div id="player-container"></div>
+
+  <p id="status">
+    jsonUrl &rarr; <span>/spine/assets/idle_1.json</span>
+    &nbsp;|&nbsp;
+    atlasUrl &rarr; <span>/spine/assets/idle_1.atlas</span>
+  </p>
+
+  <!--
+    CDN note:
+    spine-player@4.1.0 uses a global `spine` namespace after loading.
+    jsdelivr is used here to bypass browser Tracking Prevention (which
+    blocks some requests to unpkg.com in certain privacy modes).
+  -->
+  <script src="https://cdn.jsdelivr.net/npm/@esotericsoftware/spine-player@4.1.0/dist/iife/spine-player.js"></script>
+
+  <script>
+    (function () {
+      var container = document.getElementById('player-container');
+      var statusEl  = document.getElementById('status');
+
+      var player = new spine.SpinePlayer(container, {
+        // ── Correct API: jsonUrl + atlasUrl (NOT skeletonUrl) ─────────────
+        jsonUrl:   '/spine/assets/idle_1.json?v=raw_truth_v4',
+        atlasUrl:  '/spine/assets/idle_1.atlas?v=raw_truth_v4',
+
+        // ── Render options ───────────────────────────────────────────────
+        alpha:           true,
+        backgroundColor: '#000000',
+        showControls:    true,
+
+        // ── Viewport padding — keeps model away from container edges ──────
+        viewport: {
+          padTop:    '10%',
+          padBottom: '10%',
+          padLeft:   '10%',
+          padRight:  '10%',
+        },
+
+        // ── Animation — first animation from the .json is used if omitted,
+        //    but we request 'idle_1' explicitly for a consistent first pose.
+        animation: 'idle_1',
+
+        // ── Premultiplied alpha — matches PixiJS/Pixi-althpa mode ──────
+        premultipliedAlpha: true,
+
+        // ── Success ─────────────────────────────────────────────────────
+        success: function (p) {
+          console.log('[Truth Judgement] Spine Player initialised successfully.', p);
+          statusEl.innerHTML +=
+            ' &nbsp;|&nbsp; <span class="ok">&#10003; Player ready</span>';
+        },
+
+        // ── Error ───────────────────────────────────────────────────────
+        error: function (p, reason) {
+          console.error('[Truth Judgement] Failed:', reason);
+          statusEl.innerHTML +=
+            ' &nbsp;|&nbsp; <span class="err">&#10007; ' + reason + '</span>';
+        },
+      });
+
+      // Expose globally for console inspection
+      window.__spineTruth = player;
+    })();
+  </script>
+
+</body>
+</html>

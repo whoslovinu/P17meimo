@@ -1,0 +1,29 @@
+-- CUTOVER_A: Reset — all new activity inventory starts from 0
+--
+-- Existing global item counts in user_inventory are preserved as archival data.
+-- No new rows created. All users start with 0 items in every activity.
+--
+-- PROS:
+--   - Semantically clean: every activity starts from zero
+--   - No risk of wrong attribution
+--   - All subsequent grants/consumes are fresh and unambiguous
+--
+-- CONS:
+--   - Players lose their existing item quantities (unless restored via other means)
+--   - Players who earned items fairly lose them
+--
+-- Run this AFTER the base migration (2026-09-22-0001_activity_scoped_inventory.sql)
+--
+-- VERIFY before running:
+--   SELECT COUNT(*) AS users, SUM(item_hand_count) AS total_propA, SUM(item_phallus_count) AS total_propB
+--   FROM public.user_inventory
+--   WHERE item_hand_count > 0 OR item_phallus_count > 0;
+--
+-- AFFECTED:
+--   All 158 users with nonzero inventory will have their quantities frozen in user_inventory
+--   but not copied to any user_activity_inventory row.
+--   Result: all users see 0/0 items in all activities until they earn new ones.
+
+-- No-op: the base migration created an empty table.
+-- This script is a documentation marker only.
+SELECT 'CUTOVER_A: No rows created. All activity inventory starts at 0.' AS status;

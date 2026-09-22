@@ -1,0 +1,20 @@
+#!/bin/bash
+set -euo pipefail
+STAGE=/var/www/build-stage-20260915/app
+echo "Stage: $STAGE"
+echo "Copying modified files..."
+sudo cp /tmp/route-claim.ts "$STAGE/app/api/game/milestone/claim/route.ts"
+sudo cp /tmp/route-init.ts "$STAGE/app/api/battle/init/route.ts"
+sudo cp /tmp/SubPageModal.tsx "$STAGE/app/components/features/battle/SubPageModal.tsx"
+sudo cp /tmp/badgeNameCache.ts "$STAGE/lib/badgeNameCache.ts"
+sudo cp /tmp/pg.ts "$STAGE/lib/db/pg.ts"
+sudo cp /tmp/postgres.ts "$STAGE/lib/db/postgres.ts"
+sudo cp /tmp/badgeAdapter.ts "$STAGE/lib/services/badgeAdapter.ts"
+sudo cp /tmp/act-upd.ts "$STAGE/app/api/admin/activity/update/route.ts"
+sudo cp /tmp/user-search.ts "$STAGE/app/api/admin/users/search/route.ts"
+sudo cp /tmp/admin-users.tsx "$STAGE/app/admin/users/page.tsx"
+sudo cp /tmp/override.ts "$STAGE/app/api/admin/users/[uid]/milestones/override/route.ts"
+echo "All files copied."
+echo "Checking build stage layout..."
+sudo ls "$STAGE/app/admin/users/"
+sudo ls "$STAGE/app/api/admin/users/[uid]/milestones/override/ 2>/dev/null || echo "override dir check done"

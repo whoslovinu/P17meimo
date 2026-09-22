@@ -1,0 +1,2361 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>魅魔来袭 · 活动系统 · 高保真原型</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<style>
+/* ================================================================
+   SHELL LAYOUT — top bar + tabs + split content
+   ================================================================ */
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+html, body { width:100%; height:100%; overflow:hidden; font-family:'Noto Sans SC',sans-serif; background:#0A0A12; color:#E6EDF3; }
+
+/* ---- Title Bar ---- */
+#topBar {
+  height:48px; background:#0A0A12;
+  display:flex; align-items:center; justify-content:center;
+  border-bottom:1px solid rgba(255,255,255,0.06);
+  position:relative; z-index:100;
+}
+#topBar h1 {
+  font-size:16px; font-weight:800; letter-spacing:1px;
+  background:linear-gradient(90deg,#FF2D87,#9B5CFF,#00D4FF);
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  background-clip:text;
+}
+
+/* ---- Tab Bar ---- */
+#tabBar {
+  height:40px; background:#0D1117;
+  border-bottom:1px solid rgba(255,255,255,0.08);
+  display:flex; align-items:center; gap:2px;
+  padding:0 12px; overflow-x:auto; flex-shrink:0;
+  scrollbar-width:none;
+}
+#tabBar::-webkit-scrollbar { display:none; }
+.tab-btn {
+  height:30px; padding:0 16px; border-radius:8px;
+  border:1px solid transparent; background:none;
+  color:rgba(255,255,255,0.4); font-size:12px;
+  font-family:'Noto Sans SC',sans-serif; font-weight:500;
+  cursor:pointer; transition:all 0.2s; white-space:nowrap;
+  flex-shrink:0;
+}
+.tab-btn:hover { color:rgba(255,255,255,0.7); background:rgba(255,255,255,0.04); }
+.tab-btn.active {
+  background:rgba(255,45,135,0.15); border-color:rgba(255,45,135,0.4);
+  color:#FF2D87; font-weight:700;
+}
+.tab-sep {
+  width:1px; height:18px; background:rgba(255,255,255,0.08);
+  flex-shrink:0; margin:0 4px;
+}
+
+/* ---- Content Area ---- */
+#contentArea {
+  flex:1; overflow:hidden; position:relative;
+}
+.tab-page {
+  display:none; position:absolute; inset:0; flex-direction:column; overflow-y:auto;
+}
+.tab-page.active { display:flex; }
+
+/* ---- Split Layout (phone left + docs right) ---- */
+.split-layout {
+  display:flex; width:100%; min-height:100%; flex-shrink:0;
+}
+.split-left {
+  flex-shrink:0; width:480px;
+  display:flex; align-items:center; justify-content:center;
+  background:#000; position:relative; overflow:hidden;
+}
+.split-right {
+  flex:1; overflow-y:auto; padding:28px 32px;
+  background:#111318;
+  scrollbar-width:thin; scrollbar-color:rgba(255,255,255,0.1) transparent;
+}
+.split-right::-webkit-scrollbar { width:5px; }
+.split-right::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.1); border-radius:3px; }
+
+/* ---- Full page (for complete preview tabs) ---- */
+.full-page {
+  width:100%; height:100%; overflow:hidden;
+}
+
+/* ---- Doc Styles ---- */
+.doc-page-title {
+  font-size:18px; font-weight:800; color:#E6EDF3;
+  margin-bottom:24px; display:flex; align-items:center; gap:10px;
+}
+.doc-page-title .icon { font-size:20px; }
+.doc-card {
+  background:rgba(255,255,255,0.03);
+  border:1px solid rgba(255,255,255,0.07);
+  border-radius:12px; padding:20px 22px;
+  margin-bottom:14px;
+}
+.doc-card .sec-num {
+  font-size:13px; font-weight:800; color:#FF2D87;
+  margin-bottom:10px; letter-spacing:0.5px;
+}
+.doc-card p, .doc-card li {
+  font-size:13px; color:rgba(230,237,243,0.75);
+  line-height:1.85; margin:0;
+}
+.doc-card strong { color:#E6EDF3; font-weight:600; }
+.doc-card .highlight { color:#FF2D87; font-weight:700; }
+.doc-card .tag-inline {
+  display:inline-block; padding:1px 8px; border-radius:10px;
+  font-size:11px; font-weight:600;
+}
+.doc-card .tag-pink { background:rgba(255,45,135,0.12); color:#FF2D87; border:1px solid rgba(255,45,135,0.25); }
+.doc-card .tag-blue { background:rgba(0,212,255,0.1); color:#00D4FF; border:1px solid rgba(0,212,255,0.25); }
+.doc-card .tag-gold { background:rgba(255,208,96,0.1); color:#FFD060; border:1px solid rgba(255,208,96,0.25); }
+.doc-card .tag-purple { background:rgba(155,92,255,0.1); color:#9B5CFF; border:1px solid rgba(155,92,255,0.25); }
+.doc-card .tag-green { background:rgba(61,214,140,0.1); color:#3DD68C; border:1px solid rgba(61,214,140,0.25); }
+.doc-card ul { padding-left:18px; margin-top:6px; }
+.doc-card li { margin-bottom:3px; }
+.doc-card code {
+  background:rgba(255,255,255,0.06); padding:1px 6px;
+  border-radius:4px; font-size:12px; font-family:'JetBrains Mono',monospace;
+  color:#00D4FF;
+}
+.doc-divider { height:1px; background:rgba(255,255,255,0.06); margin:20px 0; }
+
+/* ---- Test Cases (collapsible, below split-layout) ---- */
+.tc-wrap { width:100%;padding:20px 24px 40px;flex-shrink:0; }
+.tc-bar { display:flex;align-items:center;gap:10px;padding:12px 18px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:10px;cursor:pointer;user-select:none;transition:background 0.2s; }
+.tc-bar:hover { background:rgba(255,255,255,0.04); }
+.tc-arrow { font-size:10px;color:rgba(230,237,243,0.4);transition:transform 0.25s;flex-shrink:0; }
+.tc-bar.open .tc-arrow { transform:rotate(90deg); }
+.tc-title { font-size:14px;font-weight:800;color:#E6EDF3;display:flex;align-items:center;gap:6px; }
+.tc-count { font-size:11px;font-weight:700;color:#FF2D87;background:rgba(255,45,135,0.12);padding:2px 8px;border-radius:8px; }
+.tc-body { display:none;margin-top:12px; }
+.tc-bar.open + .tc-body { display:block; }
+.tc-table { width:100%;border-collapse:collapse;font-size:11px;background:rgba(255,255,255,0.015);border:1px solid rgba(255,255,255,0.06);border-radius:10px;overflow:hidden; }
+.tc-table th { text-align:left;padding:10px 12px;color:rgba(230,237,243,0.5);font-weight:600;font-size:10px;border-bottom:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.02);white-space:nowrap; }
+.tc-table td { padding:10px 12px;color:rgba(230,237,243,0.7);border-bottom:1px solid rgba(255,255,255,0.04);vertical-align:top;line-height:1.6; }
+.tc-table tr:hover td { background:rgba(255,255,255,0.02); }
+.tc-id { font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(230,237,243,0.4);white-space:nowrap; }
+.tc-p0 { color:#FF2D87;font-weight:700;font-size:10px; }
+.tc-p1 { color:#FF9020;font-weight:700;font-size:10px; }
+.tc-st { font-size:10px;padding:3px 10px;border-radius:5px;white-space:nowrap;cursor:pointer;user-select:none;display:inline-block;transition:all 0.15s;font-weight:600;border:1px solid transparent; }
+.tc-st[data-s="0"] { background:rgba(255,255,255,0.06);color:rgba(230,237,243,0.4); }
+.tc-st[data-s="1"] { background:rgba(61,214,140,0.12);color:#3DD68C;border-color:rgba(61,214,140,0.25); }
+.tc-st[data-s="2"] { background:rgba(255,77,109,0.12);color:#FF4D6D;border-color:rgba(255,77,109,0.25); }
+
+/* ---- Phone Shell (for static previews) ---- */
+.phone-preview {
+  width:375px; height:812px;
+  border-radius:40px;
+  box-shadow:0 0 0 1px rgba(255,255,255,0.08), 0 0 50px rgba(155,92,255,0.2), 0 20px 60px rgba(0,0,0,0.7);
+  overflow:hidden; position:relative;
+  background:#06040F; flex-shrink:0;
+  transform:scale(0.85); transform-origin:center center;
+}
+
+/* ---- Admin Preview (for admin tabs) ---- */
+.admin-preview {
+  width:100%; height:100%;
+  overflow:hidden; position:relative;
+  background:#0D1117;
+  transform:scale(0.78); transform-origin:top left;
+  width:128%; height:128%;
+}
+
+/* ================================================================
+   H5 PAGE STYLES (reused from original, scoped under .h5-scope)
+   ================================================================ */
+.h5-scope {
+  --pink: #FF2D87; --pink-glow: rgba(255,45,135,0.4);
+  --blue: #00D4FF; --blue-glow: rgba(0,212,255,0.3);
+  --gold: #FFD060; --gold-glow: rgba(255,208,96,0.4);
+  --purple: #9B5CFF;
+  --text-1: #F0E8FF; --text-2: rgba(240,232,255,0.6);
+  --text-3: rgba(240,232,255,0.35);
+  --border: rgba(255,255,255,0.08);
+  --hp-bg: rgba(255,255,255,0.08);
+  --bg-deep: #06040F; --bg-card: rgba(255,255,255,0.04);
+  color:var(--text-1); font-family:'Noto Sans SC',sans-serif;
+  width:100%; height:100%; position:relative; overflow:hidden;
+  user-select:none;
+}
+.h5-scope .page-inner { display:flex; flex-direction:column; height:100%; position:relative; overflow:hidden; background:var(--bg-deep); }
+.h5-scope .bg-grad { position:absolute; inset:-20px; z-index:0; background-image:radial-gradient(ellipse at 30% 20%, rgba(155,92,255,0.25) 0%, transparent 55%), radial-gradient(ellipse at 75% 70%, rgba(255,45,135,0.18) 0%, transparent 50%), radial-gradient(ellipse at 50% 100%, rgba(0,212,255,0.12) 0%, transparent 50%); pointer-events:none; }
+.h5-scope .top-bar { position:relative;z-index:10; height:52px; padding:0 16px; display:flex; align-items:center; gap:10px; background:linear-gradient(180deg,rgba(6,4,15,0.9) 0%,transparent 100%); }
+.h5-scope .top-back { width:32px;height:32px;border-radius:50%; background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.1); display:flex;align-items:center;justify-content:center; font-size:15px; color:var(--text-2); flex-shrink:0; }
+.h5-scope .top-center { flex:1; text-align:center; }
+.h5-scope .act-title { font-size:14px;font-weight:700;background:linear-gradient(90deg,var(--pink),var(--purple),var(--blue));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text; }
+.h5-scope .act-time { font-size:10px;color:var(--text-3);margin-top:1px; }
+.h5-scope .btn-rule { background:rgba(255,45,135,0.12);border:1px solid rgba(255,45,135,0.3);color:var(--pink);font-size:11px;padding:4px 10px;border-radius:14px;flex-shrink:0; }
+.h5-scope .hp-section { position:relative;z-index:10;padding:0 16px 10px; }
+.h5-scope .hp-header { display:flex;justify-content:space-between;align-items:center;margin-bottom:6px; }
+.h5-scope .hp-label { font-size:11px;color:var(--text-2);font-weight:500; }
+.h5-scope .hp-value { font-size:11px;color:var(--pink);font-weight:700; }
+.h5-scope .hp-track { position:relative;height:14px;background:var(--hp-bg);border-radius:7px;overflow:hidden;border:1px solid rgba(255,255,255,0.06); }
+.h5-scope .hp-fill { height:100%;width:72.5%;background:linear-gradient(90deg,#FF5FA0,#FF2D87,#FF7C00);border-radius:7px;position:relative;overflow:hidden; }
+.h5-scope .hp-fill::after { content:'';position:absolute;top:0;left:-100%;width:60%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.3),transparent);animation:hpShine 2.5s linear infinite; }
+@keyframes hpShine { 0%{left:-100%;} 100%{left:200%;} }
+.h5-scope .hp-stages { position:absolute;inset:0;pointer-events:none; }
+.h5-scope .hp-mark { position:absolute;top:0;bottom:0;width:2px;background:rgba(255,255,255,0.25);transform:translateX(-50%); }
+.h5-scope .hp-mark::after { content:attr(data-label);position:absolute;top:-16px;left:50%;transform:translateX(-50%);font-size:9px;color:var(--gold);white-space:nowrap; }
+.h5-scope .live2d-area { position:relative;z-index:5;flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden;min-height:0; }
+.h5-scope .char-wrap { display:flex;flex-direction:column;align-items:center; }
+.h5-scope .char-svg { width:160px;height:220px;filter:drop-shadow(0 0 20px var(--purple));animation:charFloat 3s ease-in-out infinite; }
+@keyframes charFloat { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-10px);} }
+.h5-scope .char-shadow { width:120px;height:20px;background:radial-gradient(ellipse,rgba(155,92,255,0.4) 0%,transparent 70%);margin-top:-10px;filter:blur(4px); }
+.h5-scope .stage-col { position:absolute;right:10px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:8px;align-items:center;z-index:20; }
+.h5-scope .stage-chip { width:46px;height:46px;border-radius:12px;border:1.5px solid var(--border);background:rgba(6,4,15,0.6);backdrop-filter:blur(6px);display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;overflow:hidden; }
+.h5-scope .stage-chip.active { border-color:var(--pink);box-shadow:0 0 12px var(--pink-glow);background:rgba(255,45,135,0.15); }
+.h5-scope .stage-chip.locked { opacity:0.35; }
+.h5-scope .chip-icon { font-size:20px;line-height:1; }
+.h5-scope .chip-label { font-size:8px;color:var(--text-2);margin-top:2px; }
+.h5-scope .stage-chip.active .chip-label { color:var(--pink); }
+.h5-scope .lock-icon { position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(6,4,15,0.65);font-size:16px; }
+.h5-scope .bottom-area { position:relative;z-index:10;padding:8px 16px 20px;background:linear-gradient(0deg,rgba(6,4,15,0.95) 0%,transparent 100%); }
+.h5-scope .weapon-row { display:flex;align-items:center;justify-content:center;gap:24px;margin-bottom:14px; }
+.h5-scope .weapon-btn { display:flex;flex-direction:column;align-items:center; }
+.h5-scope .weapon-circle { width:72px;height:72px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:32px;border:2px solid transparent;position:relative; }
+.h5-scope .weapon-a .weapon-circle { background:radial-gradient(circle at 40% 35%,rgba(255,45,135,0.3),rgba(255,45,135,0.05));border-color:rgba(255,45,135,0.5);box-shadow:0 0 20px rgba(255,45,135,0.25); }
+.h5-scope .weapon-b .weapon-circle { background:radial-gradient(circle at 40% 35%,rgba(0,212,255,0.3),rgba(0,212,255,0.05));border-color:rgba(0,212,255,0.5);box-shadow:0 0 20px rgba(0,212,255,0.25); }
+.h5-scope .weapon-count { position:absolute;top:-4px;right:-4px;min-width:20px;height:20px;padding:0 5px;background:var(--pink);border-radius:10px;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid var(--bg-deep);color:white; }
+.h5-scope .weapon-b .weapon-count { background:var(--blue);color:var(--bg-deep); }
+.h5-scope .weapon-name { font-size:11px;color:var(--text-2);margin-top:5px; }
+.h5-scope .weapon-type { font-size:9px;color:var(--text-3);margin-top:1px; }
+.h5-scope .action-row { display:flex;gap:10px;justify-content:center; }
+.h5-scope .action-btn { flex:1;max-width:160px;height:40px;border-radius:20px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-2);font-size:13px;font-weight:500;display:flex;align-items:center;justify-content:center;gap:5px;position:relative; }
+.h5-scope .dot { width:7px;height:7px;border-radius:50%;flex-shrink:0; }
+.h5-scope .task-btn .dot { background:var(--gold);box-shadow:0 0 6px var(--gold-glow); }
+.h5-scope .reward-btn .dot { background:var(--pink);box-shadow:0 0 6px var(--pink-glow); }
+.h5-scope .badge { position:absolute;top:6px;right:10px;width:7px;height:7px;border-radius:50%;background:var(--pink);box-shadow:0 0 6px var(--pink-glow); }
+
+/* Modal styles */
+.h5-scope .modal-overlay { position:absolute;inset:0;z-index:200;background:rgba(6,4,15,0.88);backdrop-filter:blur(8px);display:flex;align-items:flex-end;border-radius:40px;overflow:hidden; }
+.h5-scope .modal-sheet { width:100%;background:linear-gradient(180deg,#1A1130 0%,#110D22 100%);border-radius:24px 24px 0 0;border:1px solid rgba(155,92,255,0.2);border-bottom:none;padding:0 0 40px;max-height:78%;overflow-y:auto; }
+.h5-scope .modal-handle { width:40px;height:4px;border-radius:2px;background:rgba(255,255,255,0.15);margin:12px auto 0; }
+.h5-scope .modal-title { font-size:16px;font-weight:700;padding:16px 20px 12px;border-bottom:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;gap:8px; }
+.h5-scope .modal-body { padding:16px 20px; }
+
+/* Task card */
+.h5-scope .task-card { background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:10px; }
+.h5-scope .task-card-header { display:flex;align-items:center;justify-content:space-between;margin-bottom:10px; }
+.h5-scope .task-tag { font-size:10px;font-weight:700;padding:3px 8px;border-radius:10px; }
+.h5-scope .tag-consume { background:rgba(255,208,96,0.15);color:var(--gold);border:1px solid rgba(255,208,96,0.3); }
+.h5-scope .tag-recharge { background:rgba(0,212,255,0.12);color:var(--blue);border:1px solid rgba(0,212,255,0.3); }
+.h5-scope .task-reward-preview { font-size:12px;color:var(--text-2); }
+.h5-scope .task-reward-preview strong { color:var(--pink); }
+.h5-scope .task-progress-bar { height:6px;background:var(--hp-bg);border-radius:3px;overflow:hidden;margin-bottom:8px; }
+.h5-scope .task-progress-fill { height:100%;border-radius:3px;background:linear-gradient(90deg,var(--gold),var(--pink)); }
+.h5-scope .task-footer { display:flex;align-items:center;justify-content:space-between; }
+.h5-scope .task-progress-text { font-size:11px;color:var(--text-3); }
+.h5-scope .task-claim-btn { height:38px;padding:0 16px;border-radius:10px;border:none;color:white;font-size:14px;font-weight:800;cursor:pointer; }
+.h5-scope .task-claim-disabled { background:rgba(255,255,255,0.08);color:rgba(240,232,255,0.3);cursor:default; }
+.h5-scope .task-claim-active { background:linear-gradient(90deg,var(--gold),#FF9020);color:#1A0E00; }
+.h5-scope .task-times { font-size:11px;color:var(--text-3); }
+
+/* Reward */
+.h5-scope .personal-progress { background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:12px; }
+.h5-scope .pp-left { flex:1;min-width:0; }
+.h5-scope .pp-label { font-size:12px;color:var(--text-2); }
+.h5-scope .pp-value { font-size:22px;font-weight:900;color:var(--pink);line-height:1.2; }
+.h5-scope .pp-next { font-size:11px;color:var(--text-3);margin-top:2px; }
+.h5-scope .pp-right { flex-shrink:0;text-align:right; }
+.h5-scope .reward-item { display:flex;align-items:center;gap:14px;padding:10px 0;position:relative; }
+.h5-scope .reward-item:not(:last-child)::after { content:'';position:absolute;left:17px;top:42px;bottom:-10px;width:2px;background:var(--border); }
+.h5-scope .reward-node { width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;border:2px solid var(--border);background:var(--bg-card);position:relative;z-index:1; }
+.h5-scope .reward-node.unlocked { border-color:var(--gold);background:rgba(255,208,96,0.1);box-shadow:0 0 12px var(--gold-glow); }
+.h5-scope .reward-node.claimed { border-color:rgba(255,255,255,0.15);background:rgba(255,255,255,0.05); }
+.h5-scope .reward-info { flex:1; }
+.h5-scope .reward-milestone { font-size:12px;color:var(--text-2);margin-bottom:2px; }
+.h5-scope .reward-amount { font-size:15px;font-weight:700;color:var(--gold); }
+.h5-scope .reward-claim-btn { height:28px;padding:0 14px;border-radius:14px;background:linear-gradient(90deg,var(--gold),#FF9020);border:none;color:#1A0E00;font-size:11px;font-weight:900;white-space:nowrap; }
+.h5-scope .reward-claim-btn.claimed-state { background:rgba(255,255,255,0.08);color:rgba(240,232,255,0.35); }
+
+/* Rules */
+.h5-scope .rule-section { margin-bottom:18px; }
+.h5-scope .rule-section h3 { font-size:13px;font-weight:700;color:var(--purple);margin-bottom:8px; }
+.h5-scope .rule-section p, .h5-scope .rule-section li { font-size:12px;color:var(--text-2);line-height:1.8; }
+.h5-scope .rule-section ul { padding-left:16px; }
+
+/* Loading screen */
+.h5-scope .loading-screen { position:absolute;inset:0;z-index:500;background:#06040F;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:40px; }
+.h5-scope .loading-logo { font-size:13px;font-weight:700;letter-spacing:1px;background:linear-gradient(90deg,var(--pink),var(--purple),var(--blue));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:36px;opacity:0.7; }
+.h5-scope .loading-title { font-size:17px;font-weight:800;color:var(--text-1);margin-bottom:6px; }
+.h5-scope .loading-subtitle { font-size:11px;color:var(--text-3);margin-bottom:40px; }
+.h5-scope .loading-bar-track { width:200px;height:3px;background:rgba(255,255,255,0.08);border-radius:2px;overflow:hidden;margin-bottom:10px; }
+.h5-scope .loading-bar-fill { height:100%;width:62%;background:linear-gradient(90deg,var(--purple),var(--pink));border-radius:2px;position:relative;overflow:hidden; }
+.h5-scope .loading-bar-fill::after { content:'';position:absolute;top:0;left:-60%;width:50%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.5),transparent);animation:loadShine 1.4s linear infinite; }
+@keyframes loadShine { to{left:120%;} }
+.h5-scope .loading-pct { font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--purple);text-align:center;margin-bottom:6px;font-weight:600; }
+.h5-scope .loading-stage { font-size:11px;color:var(--text-3);text-align:center; }
+.h5-scope .loading-dots { display:flex;gap:6px;margin-top:28px; }
+.h5-scope .loading-dot { width:5px;height:5px;border-radius:50%;background:var(--purple);opacity:0.3;animation:dotPulse 1.2s ease-in-out infinite; }
+.h5-scope .loading-dot:nth-child(2) { animation-delay:0.2s; }
+.h5-scope .loading-dot:nth-child(3) { animation-delay:0.4s; }
+@keyframes dotPulse { 0%,100%{opacity:0.2;transform:scale(0.8)} 50%{opacity:1;transform:scale(1.2);background:#FF2D87} }
+.h5-scope .loading-orb-bg { position:absolute;inset:0;overflow:hidden;border-radius:40px;pointer-events:none; }
+.h5-scope .loading-orb-bg::before { content:'';position:absolute;width:320px;height:320px;border-radius:50%;background:radial-gradient(circle,rgba(155,92,255,0.18) 0%,transparent 70%);top:50%;left:50%;transform:translate(-50%,-60%);animation:loadOrb 3s ease-in-out infinite; }
+.h5-scope .loading-orb-bg::after { content:'';position:absolute;width:200px;height:200px;border-radius:50%;background:radial-gradient(circle,rgba(255,45,135,0.12) 0%,transparent 70%);bottom:20%;right:10%;animation:loadOrb 3s ease-in-out infinite 1.5s; }
+@keyframes loadOrb { 0%,100%{transform:translate(-50%,-60%) scale(1);opacity:0.6;} 50%{transform:translate(-50%,-60%) scale(1.15);opacity:1;} }
+.h5-scope .loading-char { width:100px;height:140px;margin-bottom:32px;position:relative; }
+.h5-scope .loading-char svg { width:100%;height:100%;filter:drop-shadow(0 0 16px rgba(155,92,255,0.5));animation:loadFloat 2.5s ease-in-out infinite; }
+@keyframes loadFloat { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-8px);} }
+
+/* ---- Admin preview styles ---- */
+.admin-scope {
+  --bg: #0D1117; --bg2: #161B22; --bg3: #1C2230; --bg4: #222B3A;
+  --border: #2A3547; --border2: rgba(255,255,255,0.06);
+  --accent: #FF2D87; --accent2: #00C8FF; --accent3: #9B5CFF;
+  --green: #3DD68C; --gold: #F5C842; --red: #FF4D6D;
+  --text1: #E6EDF3; --text2: #8B949E; --text3: #4A5568;
+  --radius: 10px;
+  background:var(--bg); color:var(--text1); font-family:'Noto Sans SC',sans-serif; font-size:13px;
+  width:100%; height:100%; overflow-y:auto; padding:24px;
+}
+.admin-scope .card { background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:16px;overflow:hidden; }
+.admin-scope .card-header { padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px; }
+.admin-scope .card-title { font-size:13px;font-weight:700; }
+.admin-scope .card-desc { font-size:11px;color:var(--text3);margin-top:1px; }
+.admin-scope .card-body { padding:18px; }
+.admin-scope table { width:100%;border-collapse:collapse; }
+.admin-scope th { padding:10px 14px;text-align:left;font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;border-bottom:1px solid var(--border);background:var(--bg3);white-space:nowrap; }
+.admin-scope td { padding:11px 14px;font-size:13px;border-bottom:1px solid var(--border2);vertical-align:middle; }
+.admin-scope .tag { display:inline-flex;align-items:center;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600; }
+.admin-scope .tag-green { background:rgba(61,214,140,0.12);color:var(--green);border:1px solid rgba(61,214,140,0.2); }
+.admin-scope .tag-gold { background:rgba(245,200,66,0.12);color:var(--gold);border:1px solid rgba(245,200,66,0.2); }
+.admin-scope .tag-gray { background:rgba(255,255,255,0.05);color:var(--text3);border:1px solid var(--border2); }
+.admin-scope .form-group { display:flex;flex-direction:column;gap:5px;margin-bottom:12px; }
+.admin-scope .form-label { font-size:12px;color:var(--text2);font-weight:500; }
+.admin-scope .form-control { height:36px;padding:0 12px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text1);font-size:13px;font-family:inherit;outline:none;width:100%; }
+.admin-scope textarea.form-control { height:80px;padding:10px 12px;resize:vertical; }
+.admin-scope .toggle-row { display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border2); }
+.admin-scope .toggle-row:last-child { border-bottom:none; }
+.admin-scope .toggle-info h4 { font-size:13px;margin-bottom:2px; }
+.admin-scope .toggle-info p { font-size:11px;color:var(--text3); }
+.admin-scope .toggle { width:40px;height:22px;border-radius:11px;background:var(--bg4);border:1px solid var(--border);position:relative;flex-shrink:0; }
+.admin-scope .toggle.on { background:var(--accent);border-color:var(--accent); }
+.admin-scope .toggle::after { content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:white;box-shadow:0 1px 3px rgba(0,0,0,0.3); }
+.admin-scope .toggle.on::after { transform:translateX(18px); }
+.admin-scope .section-title { font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:12px;display:flex;align-items:center;gap:8px; }
+.admin-scope .section-title::after { content:'';flex:1;height:1px;background:var(--border); }
+.admin-scope .hp-preview { height:20px;background:var(--bg3);border-radius:10px;overflow:hidden;border:1px solid var(--border);position:relative;margin:10px 0; }
+.admin-scope .hp-fill { height:100%;width:72.5%;background:linear-gradient(90deg,#FF5FA0,#FF2D87,#FF7C00);border-radius:10px; }
+.admin-scope .form-grid-2 { display:grid;grid-template-columns:1fr 1fr;gap:14px; }
+.admin-scope .form-grid-3 { display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px; }
+.admin-scope .header-btn { height:32px;padding:0 14px;border-radius:6px;background:var(--bg4);border:1px solid var(--border);color:var(--text2);font-size:12px;font-family:inherit;cursor:pointer; }
+.admin-scope .header-btn.primary { background:var(--accent);border-color:var(--accent);color:white;font-weight:600; }
+
+/* ================================================================
+   ORIGINAL INTERACTIVE PAGES (embedded in iframes or direct)
+   ================================================================ */
+#origH5Wrap, #origAdminWrap {
+  position:absolute; inset:0; overflow:hidden;
+}
+
+</style>
+</head>
+<body style="display:flex;flex-direction:column;">
+
+<!-- ================================================================
+     TITLE BAR
+     ================================================================ -->
+<div id="topBar">
+  <h1>魅魔来袭 · 活动系统 · 高保真原型 V1</h1>
+</div>
+
+<!-- ================================================================
+     TAB BAR
+     ================================================================ -->
+<div id="tabBar">
+  <button class="tab-btn active" onclick="switchTab('bannerEntry')">H5·Banner入口</button>
+  <button class="tab-btn" onclick="switchTab('loading')">H5·加载页</button>
+  <button class="tab-btn" onclick="switchTab('main')">H5·主战场</button>
+  <button class="tab-btn" onclick="switchTab('task')">H5·每日任务</button>
+  <button class="tab-btn" onclick="switchTab('reward')">H5·进度奖励</button>
+  <button class="tab-btn" onclick="switchTab('rules')">H5·活动规则</button>
+  <span class="tab-sep"></span>
+  <button class="tab-btn" onclick="switchTab('adActList')">后台·活动管理</button>
+  <button class="tab-btn" onclick="switchTab('adBanner')">后台·Banner</button>
+  <button class="tab-btn" onclick="switchTab('adConfig')">后台·活动配置</button>
+  <button class="tab-btn" onclick="switchTab('adUserMgr')">后台·用户管理</button>
+</div>
+
+<!-- ================================================================
+     CONTENT AREA
+     ================================================================ -->
+<div id="contentArea">
+
+<!-- ====== TAB: H5·加载页 ====== -->
+<div class="tab-page" id="page-loading">
+  <div class="split-layout">
+    <div class="split-left">
+      <div class="phone-preview">
+        <div class="h5-scope">
+          <div class="loading-screen">
+            <div class="loading-orb-bg"></div>
+            <!-- 退出按钮 -->
+            <div style="position:absolute;top:16px;left:16px;z-index:10;width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;color:rgba(240,232,255,0.6);">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            </div>
+            <div class="loading-logo">⚡ MEIMODU</div>
+            <div class="loading-char">
+              <svg viewBox="0 0 160 220" xmlns="http://www.w3.org/2000/svg">
+                <defs><radialGradient id="lg0" cx="50%" cy="40%" r="60%"><stop offset="0%" stop-color="#C89EFF"/><stop offset="100%" stop-color="#5B2D9A"/></radialGradient><filter id="lGlow"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+                <ellipse cx="80" cy="160" rx="32" ry="42" fill="url(#lg0)" filter="url(#lGlow)"/>
+                <ellipse cx="44" cy="155" rx="10" ry="22" fill="url(#lg0)" transform="rotate(-15,44,155)"/>
+                <ellipse cx="116" cy="155" rx="10" ry="22" fill="url(#lg0)" transform="rotate(15,116,155)"/>
+                <rect x="73" y="102" width="14" height="18" rx="7" fill="#C89EFF"/>
+                <ellipse cx="80" cy="88" rx="30" ry="32" fill="url(#lg0)" filter="url(#lGlow)"/>
+                <ellipse cx="68" cy="85" rx="7" ry="8" fill="white"/><ellipse cx="92" cy="85" rx="7" ry="8" fill="white"/>
+                <ellipse cx="69" cy="86" rx="4" ry="5" fill="#3B0080"/><ellipse cx="93" cy="86" rx="4" ry="5" fill="#3B0080"/>
+                <ellipse cx="70" cy="85" rx="1.5" ry="2" fill="white" opacity="0.9"/><ellipse cx="94" cy="85" rx="1.5" ry="2" fill="white" opacity="0.9"/>
+                <path d="M72 97 Q80 103 88 97" stroke="rgba(255,255,255,0.6)" stroke-width="2" fill="none" stroke-linecap="round"/>
+                <path d="M50 70 Q45 50 55 40 Q65 28 80 30 Q95 28 105 40 Q115 50 110 70 Q100 55 80 52 Q60 55 50 70Z" fill="#2A0060"/>
+                <circle cx="57" cy="60" r="5" fill="#FF2D87" opacity="0.8"/><circle cx="103" cy="60" r="5" fill="#FF2D87" opacity="0.8"/>
+              </svg>
+            </div>
+            <div class="loading-title">魅魔来袭，召唤挑战</div>
+            <div class="loading-subtitle">加载 Live2D 资源中…</div>
+            <div class="loading-bar-track"><div class="loading-bar-fill"></div></div>
+            <div class="loading-pct">62%</div>
+            <div class="loading-stage">加载纹理贴图（2/3）…</div>
+            <div class="loading-dots"><div class="loading-dot"></div><div class="loading-dot"></div><div class="loading-dot"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="split-right">
+      <div class="doc-page-title"><span class="icon">🚀</span> H5 加载页</div>
+      <div class="doc-card">
+        <div class="sec-num">1.1 功能概述</div>
+        <p>用户进入活动页时展示<strong>全屏加载界面</strong>，前端使用 <code>pixi-live2d-display</code>（MIT 开源，支持 Cubism 4）加载 Live2D 模型资源包（<code>.model3.json</code> + 贴图素材）。加载完成后自动淡出，进入主战场页面。活动面向全平台所有用户，无准入门槛。</p>
+      </div>
+      <div class="doc-card">
+        <div class="sec-num">1.2 视觉元素</div>
+        <ul>
+          <li><strong>退出按钮：</strong>左上角圆形半透明按钮（32×32px），chevron-left SVG 图标，点击退出活动页返回上级</li>
+          <li><strong>品牌 LOGO：</strong>渐变色 "⚡ MEIMODU" 文字，位于顶部居中</li>
+          <li><strong>角色剪影：</strong>Live2D 角色的简化 SVG 轮廓，带辉光滤镜（<code>feGaussianBlur</code>）和悬浮动画</li>
+          <li><strong>活动标题：</strong>"魅魔来袭，召唤挑战"</li>
+          <li><strong>进度条：</strong>渐变色（紫 → 粉），带高光扫过动画</li>
+          <li><strong>百分比数字：</strong>JetBrains Mono 等宽字体</li>
+          <li><strong>加载阶段文字：</strong>动态切换的加载状态描述</li>
+          <li><strong>呼吸光点：</strong>底部三点波浪动画</li>
+        </ul>
+      </div>
+      <div class="doc-card">
+        <div class="sec-num">1.3 加载阶段序列</div>
+        <p>进度条依次经过以下阶段，每阶段随机间隔 280ms ~ 550ms：</p>
+        <ul>
+          <li>8% — 初始化渲染引擎…</li>
+          <li>20% — 加载 Live2D 模型文件…</li>
+          <li>38% — 解析骨骼与网格数据…</li>
+          <li>54% ~ 78% — 加载纹理贴图（1/3 ~ 3/3）…</li>
+          <li>88% — 绑定动作序列…</li>
+          <li>95% — 加载背景资源…</li>
+          <li>100% — 加载完成！</li>
+        </ul>
+      </div>
+      <div class="doc-card">
+        <div class="sec-num">1.4 过渡行为</div>
+        <p>加载到 100% 后延迟 <code>480ms</code>，加载界面 <code>opacity</code> 渐变至 0 并设置 <code>visibility: hidden</code>。首次加载后不再重复显示（通过 <code>h5HasLoaded</code> 标记）。</p>
+      </div>
+      <div class="doc-card">
+        <div class="sec-num">1.5 兜底策略</div>
+        <p>当 Live2D 文件加载失败时（网络异常 / 文件损坏），前端展示<strong>静态图片兜底</strong>，不影响后续攻击功能正常使用。建议单形态资源包 <strong>≤ 5MB</strong>，总资源接入 CDN 加速。</p>
+      </div>
+      <div class="doc-card">
+        <div class="sec-num">1.6 背景氛围</div>
+        <p>加载页背景包含两个径向渐变光球动画（紫色 + 粉色），通过 <code>scale</code> 呼吸动画营造宇宙氛围感，与主战场风格保持一致。</p>
+      </div>
+      <div class="doc-card">
+        <div class="sec-num">1.7 活动时间校验</div>
+        <ul>
+          <li><strong>活动未开始：</strong>展示倒计时页面，隐藏攻击功能</li>
+          <li><strong>活动已结束：</strong>展示活动结束页，保留 "进度奖励" 入口供用户领取未领奖励</li>
+          <li><strong>时区规则：</strong>所有时间以服务端<strong>北京时间（UTC+8）</strong>为准</li>
+        </ul>
+      </div>
+      <div class="doc-card">
+        <div class="sec-num">1.8 兼容性要求</div>
+        <p>目标平台为 H5 移动端网页（WebView 内嵌友好），需支持 <strong>iOS Safari 13+</strong>、<strong>Android Chrome 80+</strong>。</p>
+      </div>
+    </div>
+  </div>
+
+<div class="tc-wrap">
+  <div class="tc-bar">
+    <span class="tc-arrow">▶</span>
+    <div class="tc-title">📝 测试用例</div>
+    <span class="tc-count">7 条</span>
+  </div>
+  <div class="tc-body">
+    <table class="tc-table">
+      <thead><tr><th>编号</th><th>优先级</th><th>测试场景</th><th>前置条件</th><th>操作步骤</th><th>预期结果</th><th>状态</th></tr></thead>
+      <tbody>
+        <tr><td class="tc-id">TC-LD-01</td><td class="tc-p0">P0</td><td>加载进度正常推进</td><td>首次进入活动页</td><td>观察加载界面</td><td>进度条从 8% 逐步推进到 100%，阶段文字随之切换</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-LD-02</td><td class="tc-p0">P0</td><td>加载完成自动过渡</td><td>加载到 100%</td><td>等待过渡</td><td>延迟 480ms 后加载界面淡出，展示主战场</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-LD-03</td><td class="tc-p1">P1</td><td>退出按钮可点击</td><td>加载页展示中</td><td>点击左上角返回按钮</td><td>退出活动页，返回上级页面</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-LD-04</td><td class="tc-p0">P0</td><td>Live2D 加载失败兜底</td><td>模型文件损坏/网络异常</td><td>进入活动页</td><td>展示静态图片兜底，不影响后续功能</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-LD-05</td><td class="tc-p1">P1</td><td>重复进入不重复加载</td><td>已完成首次加载</td><td>再次进入活动页</td><td>直接展示主战场，不再显示加载页</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-LD-06</td><td class="tc-p0">P0</td><td>加载超时处理</td><td>网络极慢/卡顿</td><td>等待超过 15s 未完成</td><td>展示超时提示，提供重试按钮</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-LD-07</td><td class="tc-p1">P1</td><td>加载中切后台再返回</td><td>加载进行中</td><td>切到后台等待 30s 后返回</td><td>加载状态恢复，继续加载或重新开始</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+</div>
+
+<!-- ====== TAB: H5·主战场 ====== -->
+<div class="tab-page" id="page-main">
+  <div class="split-layout">
+    <div class="split-left">
+      <div class="phone-preview">
+        <div class="h5-scope">
+          <div class="page-inner">
+            <div class="bg-grad"></div>
+            <div class="top-bar">
+              <div class="top-back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></div>
+              <div class="top-center">
+                <div style="font-size:12px;color:var(--text-2);display:flex;align-items:center;gap:6px;justify-content:center;">
+                  <span style="font-size:10px;color:var(--text-3);">距结束</span>
+                  <span style="display:inline-flex;gap:3px;">
+                    <span style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.08);border-radius:4px;padding:2px 5px;font-size:13px;font-weight:700;color:var(--text-1);font-family:'JetBrains Mono',monospace;min-width:26px;text-align:center;">06</span>
+                    <span style="color:var(--pink);font-weight:700;">:</span>
+                    <span style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.08);border-radius:4px;padding:2px 5px;font-size:13px;font-weight:700;color:var(--text-1);font-family:'JetBrains Mono',monospace;min-width:26px;text-align:center;">23</span>
+                    <span style="color:var(--pink);font-weight:700;">:</span>
+                    <span style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.08);border-radius:4px;padding:2px 5px;font-size:13px;font-weight:700;color:var(--text-1);font-family:'JetBrains Mono',monospace;min-width:26px;text-align:center;">45</span>
+                    <span style="color:var(--pink);font-weight:700;">:</span>
+                    <span style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.08);border-radius:4px;padding:2px 5px;font-size:13px;font-weight:700;color:var(--text-1);font-family:'JetBrains Mono',monospace;min-width:26px;text-align:center;">12</span>
+                  </span>
+                </div>
+              </div>
+              <div class="btn-rule">规则</div>
+            </div>
+            <div class="hp-section">
+              <div class="hp-header"><span class="hp-label">👾 BOSS 血量</span><span class="hp-value">72,500 / 100,000</span></div>
+              <div class="hp-track">
+                <div class="hp-fill"></div>
+                <div class="hp-stages">
+                  <div class="hp-mark" style="left:75%" data-label="②"></div>
+                  <div class="hp-mark" style="left:50%" data-label="③"></div>
+                  <div class="hp-mark" style="left:25%" data-label="④"></div>
+                </div>
+              </div>
+            </div>
+            <div class="live2d-area">
+              <div class="char-wrap">
+                <svg class="char-svg" viewBox="0 0 160 220" xmlns="http://www.w3.org/2000/svg">
+                  <defs><radialGradient id="cg0" cx="50%" cy="40%" r="60%"><stop offset="0%" stop-color="#C89EFF"/><stop offset="100%" stop-color="#5B2D9A"/></radialGradient><filter id="glow0"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+                  <ellipse cx="80" cy="160" rx="32" ry="42" fill="url(#cg0)" filter="url(#glow0)"/>
+                  <path d="M48 175 Q60 200 80 205 Q100 200 112 175 Q95 188 80 190 Q65 188 48 175Z" fill="rgba(155,92,255,0.5)"/>
+                  <ellipse cx="44" cy="155" rx="10" ry="22" fill="url(#cg0)" transform="rotate(-15,44,155)"/>
+                  <ellipse cx="116" cy="155" rx="10" ry="22" fill="url(#cg0)" transform="rotate(15,116,155)"/>
+                  <rect x="73" y="102" width="14" height="18" rx="7" fill="#C89EFF"/>
+                  <ellipse cx="80" cy="88" rx="30" ry="32" fill="url(#cg0)" filter="url(#glow0)"/>
+                  <ellipse cx="68" cy="85" rx="7" ry="8" fill="white"/><ellipse cx="92" cy="85" rx="7" ry="8" fill="white"/>
+                  <ellipse cx="69" cy="86" rx="4" ry="5" fill="#3B0080"/><ellipse cx="93" cy="86" rx="4" ry="5" fill="#3B0080"/>
+                  <ellipse cx="70" cy="85" rx="1.5" ry="2" fill="white" opacity="0.9"/><ellipse cx="94" cy="85" rx="1.5" ry="2" fill="white" opacity="0.9"/>
+                  <path d="M72 97 Q80 103 88 97" stroke="rgba(255,255,255,0.6)" stroke-width="2" fill="none" stroke-linecap="round"/>
+                  <path d="M50 70 Q45 50 55 40 Q65 28 80 30 Q95 28 105 40 Q115 50 110 70 Q100 55 80 52 Q60 55 50 70Z" fill="#2A0060"/>
+                  <path d="M50 70 Q40 80 42 95 Q44 88 52 82Z" fill="#2A0060"/><path d="M110 70 Q120 80 118 95 Q116 88 108 82Z" fill="#2A0060"/>
+                  <circle cx="57" cy="60" r="5" fill="#FF2D87" opacity="0.8"/><circle cx="103" cy="60" r="5" fill="#FF2D87" opacity="0.8"/>
+                  <line x1="118" y1="145" x2="140" y2="110" stroke="#C89EFF" stroke-width="3" stroke-linecap="round"/>
+                  <polygon points="140,98 136,108 146,108" fill="#FFD060" filter="url(#glow0)"/>
+                  <circle cx="140" cy="103" r="4" fill="white" opacity="0.9"/>
+                </svg>
+                <div class="char-shadow"></div>
+              </div>
+              <div class="stage-col">
+                <div class="stage-chip active"><div class="chip-icon">🌟</div><div class="chip-label">初始</div></div>
+                <div class="stage-chip locked"><div class="chip-icon">🌸</div><div class="chip-label">觉醒</div><div class="lock-icon">🔒</div></div>
+                <div class="stage-chip locked"><div class="chip-icon">🔥</div><div class="chip-label">炽焰</div><div class="lock-icon">🔒</div></div>
+                <div class="stage-chip locked"><div class="chip-icon">💀</div><div class="chip-label">暗影</div><div class="lock-icon">🔒</div></div>
+              </div>
+            </div>
+            <div class="bottom-area">
+              <div class="weapon-row">
+                <div class="weapon-btn weapon-a">
+                  <div class="weapon-circle">⚡<div class="weapon-count">3</div></div>
+                  <div class="weapon-name">闪电符文</div><div class="weapon-type">消耗任务获得</div>
+                </div>
+                <div style="display:flex;flex-direction:column;align-items:center;gap:4px;opacity:0.3"><div style="font-size:11px;color:rgba(240,232,255,0.35)">VS</div><div style="width:1px;height:30px;background:rgba(255,255,255,0.08)"></div></div>
+                <div class="weapon-btn weapon-b">
+                  <div class="weapon-circle">🌊<div class="weapon-count">2</div></div>
+                  <div class="weapon-name">潮汐晶石</div><div class="weapon-type">充值任务获得</div>
+                </div>
+              </div>
+              <div class="action-row">
+                <div class="action-btn task-btn"><span class="dot"></span> 每日任务<span class="badge"></span></div>
+                <div class="action-btn reward-btn"> 进度奖励<span class="badge"></span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="split-right">
+      <div class="doc-page-title"><span class="icon">⚔️</span> H5 主战场</div>
+      <div class="doc-card">
+        <div class="sec-num">2.1 功能概述</div>
+        <p>主战场是活动的<strong>核心交互页面</strong>，整体采用深色宇宙风主题，纵向三段布局：顶部区域（约 10%）放置导航栏和倒计时；中部区域（约 60%）展示 Live2D 角色、血条系统和形态切换；底部区域（约 30%）放置攻击道具栏、任务入口和进度奖励入口。</p>
+        <p>活动目标：<strong>提高平台每日消耗总电量 &amp; 充值订单数量</strong>，面向全平台所有用户，无准入门槛。</p>
+      </div>
+      <div class="doc-card">
+        <div class="sec-num">2.2 顶部导航栏</div>
+        <ul>
+          <li><strong>返回按钮：</strong>圆形半透明按钮，chevron-left SVG 图标，点击返回上级页面</li>
+          <li><strong>活动倒计时：</strong>居中展示 "距结束 DD:HH:MM:SS" 格式，数字使用 JetBrains Mono 等宽字体，每个数字块有半透明背景框，冒号使用粉色 <code>var(--pink)</code></li>
+          <li><strong>规则按钮：</strong>粉色边框胶囊按钮，点击弹出活动规则弹窗（内容由后台富文本配置，支持图文）</li>
+        </ul>
+      </div>
+      <div class="doc-card">
+        <div class="sec-num">2.3 BOSS 血条（全服共享）</div>
+        <p>血条为全平台所有用户共享，任意用户攻击<strong>命中</strong>均会扣减全服血量。显示 <code>当前HP / 总HP</code>，渐变色填充（粉 → 橙），带高光扫过动画。</p>
+        <ul>
+          <li><strong>总血量：</strong>后台配置，示例 100,000 点</li>
+          <li><strong>当前血量：</strong>实时展示，所有用户攻击后实时更新</li>
+          <li><strong>阶段标记：</strong>白色竖线 + 金色编号标签（②③④），对应后台配置的里程碑节点血量值；未解锁节点显示锁图标，已解锁显示对应形态缩略图</li>
+          <li><strong>阶段解锁：</strong>全服血量首次跌破阈值时，该阶段新形态自动解锁（全平台所有用户同步解锁）</li>
+          <li><strong>血条归零：</strong>总血量归零后活动继续运行至结束时间，<strong>不提前终止</strong>。用户仍可继续攻击，累计攻击伤害用于解锁个人进度奖励</li>
+          <li><strong>后台调整：</strong>支持后台手动修改当前血量（运营调整节奏），修改后实时生效</li>
+          <li><strong>实时同步：</strong>推荐轮询（间隔 3s），无需 WebSocket，降低服务端压力</li>
+        </ul>
+      </div>
+      <div class="doc-card">
+        <div class="sec-num">2.4 Live2D 角色区域</div>
+        <p>页面中央（约 60% 区域）展示 BOSS 角色的 Live2D 模型（原型用 SVG 占位），使用 <code>pixi-live2d-display</code> 库渲染。角色具有<strong>悬浮动画</strong>和<strong>辉光投影</strong>效果。文件来源为后台上传的 Live2D 模型文件（<code>.model3.json</code> + 资源包）。</p>
+        <ul>
+          <li><strong>初始状态：</strong>展示第一个默认形态（阶段 0）</li>
+          <li><strong>命中反馈：</strong>角色抖动 0.4s + 亮度提升 + 粒子爆发，播放对应道具的受击动作（由后台配置动作名称）</li>
+          <li><strong>形态切换动画：</strong>播放过渡动画效果，切换后攻击动画均使用<strong>新形态</strong>对应动作</li>
+          <li><strong>背景切换：</strong>不同形态对应不同视差背景（后台可配上传）</li>
+        </ul>
+      </div>
+      <div class="doc-card">
+        <div class="sec-num">2.5 形态选择栏（右侧）</div>
+        <p>右侧纵向排列的形态切换芯片。每个形态显示图标 + 名称。用户可随时<strong>手动切换已解锁的任意形态</strong>，无限制。形态数量由后台配置，每个形态对应一套独立 Live2D 文件。</p>
+        <ul>
+          <li>🌟 初始 — 默认形态，始终解锁</li>
+          <li>🌸 觉醒 — HP ≤ 75% 全服同步解锁</li>
+          <li>🔥 炽焰 — HP ≤ 50% 全服同步解锁</li>
+          <li>💀 暗影 — HP ≤ 25% 全服同步解锁</li>
+          <li><strong>未解锁形态：</strong>显示锁定状态缩略图 + 降低透明度，点击提示 "消耗血量即可解锁"</li>
+        </ul>
+      </div>
+      <div class="doc-card">
+        <div class="sec-num">2.6 武器道具区</div>
+        <p>底部展示两种攻击道具，中间用 "VS" 分隔。每种道具显示图标、名称、来源、剩余数量（角标）。</p>
+        <ul>
+          <li><strong>道具 A：</strong>粉色系圆形按钮，完成单日消耗电量任务获得，触发 Live2D 动作 A</li>
+          <li><strong>道具 B：</strong>蓝色系圆形按钮，完成单日充值金额任务获得，触发 Live2D 动作 B</li>
+          <li><strong>道具不足时：</strong>弹窗提示 "道具不足，去完成任务获取"，跳转任务弹窗</li>
+          <li><strong>道具上限：</strong>每日道具上限 = 每日任务可完成次数（后台配置），不可跨日累积次数（已持有道具不重置，仅次数归零）</li>
+          <li><strong>活动结束后：</strong>未使用道具清零，不补偿</li>
+        </ul>
+      </div>
+      <div class="doc-card">
+        <div class="sec-num">2.7 攻击流程</div>
+        <p>用户点击道具后执行以下流程：</p>
+        <ul>
+          <li>1. 消耗 1 个对应道具（<strong>立即扣减，不可撤回</strong>）</li>
+          <li>2. 后台随机计算伤害值 1~10 点（伤害分布权重由后台配置），扣减全服血量</li>
+          <li>3. Live2D 播放受击动作，前端产生飘字（-N）和粒子爆发效果</li>
+        </ul>
+        <p>⚠️ 网络异常（请求失败）时<strong>不扣减道具</strong>，需前端做好失败回滚。</p>
+      </div>
+      <div class="doc-card">
+        <div class="sec-num">2.8 攻击伤害分布</div>
+        <p>每次攻击造成的伤害值和触发概率由后台自由配置。<strong>道具 A 和道具 B 拥有独立的伤害配置</strong>，运营可为每种道具添加任意数量的伤害值及其触发概率（总和 100%）：</p>
+        <ul>
+          <li><strong>道具 A（⚡）：</strong>默认配置 5 个伤害值（1/2/3/5/10），偏向低伤害</li>
+          <li><strong>道具 B（🌊）：</strong>默认配置 5 个伤害值（1/3/5/8/10），偏向高伤害</li>
+        </ul>
+        <p>攻击后产生飘字（-N）和粒子爆发效果，道具 A 为金色系粒子，道具 B 为蓝色系粒子。</p>
+      </div>
+      <div class="doc-card">
+        <div class="sec-num">2.9 底部操作按钮</div>
+        <ul>
+          <li><strong>每日任务：</strong>金色指示点，有未领取奖励时右上角显示红点角标</li>
+          <li><strong>进度奖励：</strong>有可领取里程碑时右上角显示红点角标（与每日任务一致）</li>
+        </ul>
+      </div>
+      <div class="doc-card">
+        <div class="sec-num">2.10 异常处理</div>
+        <ul>
+          <li><strong>网络异常攻击失败：</strong>道具不消耗，前端回滚，提示 "网络异常，请重试"</li>
+          <li><strong>并发攻击血量超扣：</strong>后端 Redis 原子操作或数据库乐观锁，血量最低为 0 不出现负数</li>
+          <li><strong>重复点击防重：</strong>前端按钮 loading 态 + 后端 <code>requestId</code> 幂等去重</li>
+          <li><strong>后台调整血量低于已解锁阶段：</strong>不回收已解锁形态，仅影响后续阶段解锁逻辑</li>
+          <li><strong>重复领取奖励（异常请求）：</strong>后端幂等校验，返回已领取提示，不重复发放</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+<div class="tc-wrap">
+  <div class="tc-bar">
+    <span class="tc-arrow">▶</span>
+    <div class="tc-title">📝 测试用例</div>
+    <span class="tc-count">16 条</span>
+  </div>
+  <div class="tc-body">
+    <table class="tc-table">
+      <thead><tr><th>编号</th><th>优先级</th><th>测试场景</th><th>前置条件</th><th>操作步骤</th><th>预期结果</th><th>状态</th></tr></thead>
+      <tbody>
+        <tr><td class="tc-id">TC-BT-01</td><td class="tc-p0">P0</td><td>倒计时正常显示</td><td>活动进行中</td><td>观察顶部倒计时</td><td>DD:HH:MM:SS 格式正确，每秒刷新</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-BT-02</td><td class="tc-p0">P0</td><td>BOSS 血条实时更新</td><td>攻击后</td><td>观察血条变化</td><td>血量数值和进度条同步更新，transition 动画</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-BT-03</td><td class="tc-p0">P0</td><td>道具攻击消耗正常</td><td>持有道具 A ≥ 1</td><td>点击道具 A</td><td>道具数量 -1，飘字伤害数字+粒子效果</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-BT-04</td><td class="tc-p0">P0</td><td>道具不足提示</td><td>道具 A 数量为 0</td><td>点击道具 A</td><td>弹窗提示「道具不足，去完成任务获取」</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-BT-05</td><td class="tc-p0">P0</td><td>形态切换</td><td>HP ≤ 75% 解锁觉醒形态</td><td>点击觉醒形态芯片</td><td>角色切换为觉醒形态，播放过渡动画</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-BT-06</td><td class="tc-p1">P1</td><td>未解锁形态点击提示</td><td>HP > 75%</td><td>点击觉醒形态</td><td>提示「消耗血量即可解锁」</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-BT-07</td><td class="tc-p0">P0</td><td>血条归零后可继续攻击</td><td>BOSS 血量已归零</td><td>点击道具攻击</td><td>攻击正常，累计伤害用于解锁进度奖励</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-BT-08</td><td class="tc-p0">P0</td><td>网络异常道具回滚</td><td>网络断开</td><td>点击攻击</td><td>道具不消耗，提示「网络异常，请重试」</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-BT-09</td><td class="tc-p1">P1</td><td>防重复点击</td><td>正常状态</td><td>快速连续点击道具</td><td>按钮 loading 态，不重复发送请求</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-BT-10</td><td class="tc-p0">P0</td><td>并发用户血量同步</td><td>多用户同时攻击</td><td>A/B 用户同时攻击</td><td>血量扣减正确无超扣，最低为 0</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-BT-12</td><td class="tc-p0">P0</td><td>所有形态全部解锁</td><td>HP 已降至 25% 以下</td><td>查看形态栏</td><td>所有形态可自由切换，无锁图标</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-BT-13</td><td class="tc-p1">P1</td><td>攻击请求超时</td><td>网络延迟 > 10s</td><td>点击道具攻击</td><td>超时后提示错误，道具不消耗</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-BT-14</td><td class="tc-p0">P0</td><td>倒计时归零</td><td>活动剩余 0 秒</td><td>观察页面</td><td>倒计时显示 00:00:00:00，活动结束页展示</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-BT-15</td><td class="tc-p1">P1</td><td>后台修改血量-恢复血量</td><td>HP 已降至 50%</td><td>后台将血量改回 80%</td><td>血条恢复，已解锁形态不回收</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-BT-16</td><td class="tc-p0">P0</td><td>道具 A 和 B 伤害独立计算</td><td>同时持有两种道具</td><td>分别使用道具 A 和 B 攻击</td><td>两种道具独立消耗，伤害均正常累计</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-BT-17</td><td class="tc-p1">P1</td><td>弱网环境攻击</td><td>网络 2G/弱信号</td><td>点击攻击</td><td>请求可能较慢但不丢失，成功后正常扣减</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+</div>
+
+<!-- ====== TAB: H5·每日任务 ====== -->
+<div class="tab-page" id="page-task">
+  <div class="split-layout">
+    <div class="split-left">
+      <div class="phone-preview">
+        <div class="h5-scope">
+          <div class="page-inner" style="opacity:0.15;">
+            <div class="bg-grad"></div>
+          </div>
+          <div class="modal-overlay">
+            <div class="modal-sheet">
+              <div class="modal-handle"></div>
+              <div class="modal-title"><span>📋</span> 每日任务</div>
+              <div class="modal-body">
+                <div style="font-size:11px;color:rgba(240,232,255,0.35);margin-bottom:12px;">每日 00:00 重置 · 完成可获得攻击道具</div>
+                <!-- 消耗任务 -->
+                <div class="task-card">
+                  <div class="task-card-header"><span class="task-tag tag-consume">消耗任务</span><div class="task-reward-preview">奖励：<strong>⚡ 闪电符文 ×1</strong></div></div>
+                  <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--text-1);">单日消耗 500 电量</div>
+                  <div class="task-progress-bar"><div class="task-progress-fill" style="width:70%"></div></div>
+                  <div style="display:flex;justify-content:space-between;margin-bottom:10px;">
+                    <span class="task-progress-text">350 / 500 电量</span>
+                    <span class="task-times">今日剩余 3/3 次</span>
+                  </div>
+                  <button class="task-claim-btn task-claim-disabled" disabled style="width:100%;display:block;">未完成</button>
+                </div>
+                <!-- 充值任务 -->
+                <div class="task-card">
+                  <div class="task-card-header"><span class="task-tag tag-recharge">充值任务</span><div class="task-reward-preview">奖励：<strong style="color:#00D4FF">🌊 潮汐晶石 ×1</strong></div></div>
+                  <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--text-1);">单日充值满 30 元</div>
+                  <div class="task-progress-bar"><div class="task-progress-fill" style="width:100%;background:linear-gradient(90deg,#00D4FF,#9B5CFF)"></div></div>
+                  <div style="display:flex;justify-content:space-between;margin-bottom:10px;">
+                    <span class="task-progress-text">30 / 30 元</span>
+                    <span class="task-times">今日剩余 2/3 次</span>
+                  </div>
+                  <button class="task-claim-btn task-claim-active" style="width:100%;display:block;">领取</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="split-right">
+      <div class="doc-page-title"><span class="icon">📋</span> H5 每日任务</div>
+      <div class="doc-card">
+        <div class="sec-num">3.1 功能概述</div>
+        <p>每日任务弹窗以<strong>底部弹出 Sheet</strong> 形式展示，用户通过完成消耗 / 充值任务获取攻击道具。任务进度<strong>实时同步</strong>（非 T+1），用户完成后即时反映进度。</p>
+      </div>
+      <div class="doc-card">
+        <div class="sec-num">3.2 触发方式</div>
+        <p><strong>入口：</strong>主战场底部 "每日任务" 按钮<br>
+        <strong>弹窗动画：</strong>从底部滑入，弹性缓动 <code>cubic-bezier(0.34,1.56,0.64,1)</code><br>
+        <strong>关闭方式：</strong>点击 ✕ 按钮 / 点击遮罩区域</p>
+      </div>
+      <div class="doc-card">
+        <div class="sec-num">3.3 任务类型</div>
+        <p>两种任务类型，各自独立计算进度：</p>
+        <ul>
+          <li><span class="tag-inline tag-gold">消耗任务</span> — 当日累计消耗电量 ≥ 后台配置阈值，奖励道具 A ×1</li>
+          <li><span class="tag-inline tag-blue">充值任务</span> — 当日累计充值金额 ≥ 后台配置阈值，奖励道具 B ×1</li>
+        </ul>
+        <p>充值计算以<strong>支付成功</strong>为准，退款 / 撤销<strong>不回滚</strong>任务进度。消耗数据实时同步。</p>
+      </div>
+      <div class="doc-card">
+        <div class="sec-num">3.4 任务卡片结构</div>
+        <ul>
+          <li><strong>标签：</strong>任务类型胶囊标签（金色 / 蓝色）</li>
+          <li><strong>奖励预览：</strong>右侧显示道具名称和数量</li>
+          <li><strong>任务描述：</strong>如 "单日消耗 500 电量"</li>
+          <li><strong>进度条：</strong>渐变色，消耗任务金→粉，充值任务蓝→紫</li>
+          <li><strong>进度文字：</strong>如 "350 / 500 电量"</li>
+          <li><strong>领取按钮：</strong>未完成灰色禁用，已完成渐变色可点击</li>
+          <li><strong>次数限制：</strong>如 "今日剩余 3/3 次"，每日上限由后台配置</li>
+        </ul>
+      </div>
+      <div class="doc-card">
+        <div class="sec-num">3.5 重置规则</div>
+        <ul>
+          <li>重置时间：每日 <strong>00:00（UTC+8 北京时间）</strong>自动重置任务进度和可领取次数</li>
+          <li>已持有道具<strong>不重置</strong>，仅次数归零</li>
+          <li>每日道具上限 = 每日任务可完成次数（后台配置）</li>
+          <li>道具不可跨日累积次数（已持有道具不清除，仅任务次数重置）</li>
+          <li>活动结束后，未使用道具清零，不补偿</li>
+        </ul>
+      </div>
+      <div class="doc-card">
+        <div class="sec-num">3.6 领取交互</div>
+        <p>任务完成后需用户<strong>主动点击 "领取"</strong> 按钮，领取后道具即时入账。交互反馈：</p>
+        <ul>
+          <li>道具数量 +1 即时到账</li>
+          <li>按钮变为灰色 "已领取" 状态</li>
+          <li>剩余次数 -1</li>
+          <li>主战场红点角标消失</li>
+          <li>弹出 Toast 如 "道具A ×1 已入账！"</li>
+        </ul>
+      </div>
+      <div class="doc-card">
+        <div class="sec-num">3.7 未领取处理</div>
+        <p>未领取的任务奖励在<strong>次日 00:00 重置前自动失效</strong>（具体策略可在后台配置）。</p>
+      </div>
+    </div>
+  </div>
+
+<div class="tc-wrap">
+  <div class="tc-bar">
+    <span class="tc-arrow">▶</span>
+    <div class="tc-title">📝 测试用例</div>
+    <span class="tc-count">28 条</span>
+  </div>
+  <div class="tc-body">
+    <table class="tc-table">
+      <thead><tr><th>编号</th><th>优先级</th><th>测试场景</th><th>前置条件</th><th>操作步骤</th><th>预期结果</th><th>状态</th></tr></thead>
+      <tbody>
+        <tr><td class="tc-id">TC-TK-01</td><td class="tc-p0">P0</td><td>任务弹窗正常弹出</td><td>主战场页面</td><td>点击「每日任务」按钮</td><td>底部弹出任务弹窗，背景模糊遮罩</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-TK-02</td><td class="tc-p0">P0</td><td>消耗任务进度实时更新</td><td>用户消耗电量</td><td>观察消耗任务进度条</td><td>进度实时更新，非 T+1</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-TK-03</td><td class="tc-p0">P0</td><td>充值任务完成可领取</td><td>充值达到阈值</td><td>观察领取按钮</td><td>按钮变为金色渐变「领取」可点击态</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-TK-04</td><td class="tc-p0">P0</td><td>领取道具即时到账</td><td>任务已完成</td><td>点击「领取」</td><td>道具 +1，按钮变灰「已领取」，弹出 Toast</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-TK-05</td><td class="tc-p1">P1</td><td>每日次数限制</td><td>今日已领取 3/3 次</td><td>完成第 4 次任务</td><td>不再显示可领取状态，次数已用完</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-TK-06</td><td class="tc-p0">P0</td><td>零点自动重置</td><td>跨过 00:00 UTC+8</td><td>查看任务面板</td><td>进度归零，次数重置，已持有道具不清除</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-TK-07</td><td class="tc-p1">P1</td><td>关闭弹窗方式</td><td>任务弹窗已打开</td><td>点击 ✕ 或遮罩区域</td><td>弹窗关闭，返回主战场</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-TK-08</td><td class="tc-p0">P0</td><td>流式请求-对话成功统计电量</td><td>已有聊天会话，流式模式</td><td>发送对话请求，请求成功</td><td>正常统计消耗电量，任务进度更新</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-TK-09</td><td class="tc-p0">P0</td><td>流式请求-重新生成成功统计电量</td><td>已有聊天会话，流式模式</td><td>点击重新生成，请求成功</td><td>正常统计消耗电量，任务进度更新</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-TK-10</td><td class="tc-p0">P0</td><td>非流请求-对话成功统计电量</td><td>已有聊天会话，非流式模式</td><td>发送对话请求，请求成功</td><td>正常统计消耗电量，任务进度更新</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-TK-11</td><td class="tc-p0">P0</td><td>非流请求-重新生成成功统计电量</td><td>已有聊天会话，非流式模式</td><td>点击重新生成，请求成功</td><td>正常统计消耗电量，任务进度更新</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-TK-12</td><td class="tc-p0">P0</td><td>新聊天-流式对话成功统计电量</td><td>新建聊天会话，流式模式</td><td>发送对话请求，请求成功</td><td>正常统计消耗电量，任务进度更新</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-TK-13</td><td class="tc-p0">P0</td><td>新聊天-流式重新生成成功统计电量</td><td>新建聊天会话，流式模式</td><td>点击重新生成，请求成功</td><td>正常统计消耗电量，任务进度更新</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-TK-14</td><td class="tc-p0">P0</td><td>新聊天-非流对话成功统计电量</td><td>新建聊天会话，非流式模式</td><td>发送对话请求，请求成功</td><td>正常统计消耗电量，任务进度更新</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-TK-15</td><td class="tc-p0">P0</td><td>新聊天-非流重新生成成功统计电量</td><td>新建聊天会话，非流式模式</td><td>点击重新生成，请求成功</td><td>正常统计消耗电量，任务进度更新</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-TK-16</td><td class="tc-p0">P0</td><td>流式请求-对话失败不统计电量</td><td>已有聊天会话，流式模式</td><td>发送对话请求，请求失败</td><td>不统计消耗电量，任务进度不变</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-TK-17</td><td class="tc-p0">P0</td><td>流式请求-重新生成失败不统计电量</td><td>已有聊天会话，流式模式</td><td>点击重新生成，请求失败</td><td>不统计消耗电量，任务进度不变</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-TK-18</td><td class="tc-p0">P0</td><td>非流请求-对话失败不统计电量</td><td>已有聊天会话，非流式模式</td><td>发送对话请求，请求失败</td><td>不统计消耗电量，任务进度不变</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-TK-19</td><td class="tc-p0">P0</td><td>非流请求-重新生成失败不统计电量</td><td>已有聊天会话，非流式模式</td><td>点击重新生成，请求失败</td><td>不统计消耗电量，任务进度不变</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-TK-20</td><td class="tc-p0">P0</td><td>新聊天-流式对话失败不统计电量</td><td>新建聊天会话，流式模式</td><td>发送对话请求，请求失败</td><td>不统计消耗电量，任务进度不变</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-TK-21</td><td class="tc-p0">P0</td><td>新聊天-流式重新生成失败不统计电量</td><td>新建聊天会话，流式模式</td><td>点击重新生成，请求失败</td><td>不统计消耗电量，任务进度不变</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-TK-22</td><td class="tc-p0">P0</td><td>新聊天-非流对话失败不统计电量</td><td>新建聊天会话，非流式模式</td><td>发送对话请求，请求失败</td><td>不统计消耗电量，任务进度不变</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-TK-23</td><td class="tc-p0">P0</td><td>新聊天-非流重新生成失败不统计电量</td><td>新建聊天会话，非流式模式</td><td>点击重新生成，请求失败</td><td>不统计消耗电量，任务进度不变</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-TK-24</td><td class="tc-p0">P0</td><td>创建订单未支付不累计充值</td><td>充值任务进行中</td><td>创建充值订单但不完成支付</td><td>不累计充值金额，任务进度不变</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-TK-25</td><td class="tc-p0">P0</td><td>领取请求网络异常</td><td>任务已完成，可领取</td><td>点击「领取」但网络中断</td><td>领取失败，道具不入账，提示网络异常</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-TK-26</td><td class="tc-p0">P0</td><td>并发领取防重</td><td>任务已完成</td><td>快速连续点击「领取」多次</td><td>仅领取一次，幂等校验，不重复发放</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-TK-27</td><td class="tc-p1">P1</td><td>充值退款不回滚进度</td><td>充值任务已完成</td><td>用户发起退款</td><td>任务进度不回滚，已领取道具保留</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-TK-29</td><td class="tc-p0">P0</td><td>活动结束后道具清零</td><td>活动已结束，持有道具</td><td>查看道具数量</td><td>所有未使用道具清零，不补偿</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+</div>
+
+<!-- ====== TAB: H5·进度奖励 ====== -->
+<div class="tab-page" id="page-reward">
+  <div class="split-layout">
+    <div class="split-left">
+      <div class="phone-preview">
+        <div class="h5-scope">
+          <div class="page-inner" style="opacity:0.15;"><div class="bg-grad"></div></div>
+          <div class="modal-overlay">
+            <div class="modal-sheet">
+              <div class="modal-handle"></div>
+              <div class="modal-title"><span>🎁</span> 进度奖励</div>
+              <div class="modal-body">
+                <div class="personal-progress">
+                  <div class="pp-left"><div class="pp-label">⚔️ 我的累计伤害</div><div class="pp-next">距下一奖励：还差 <span style="color:#FF2D87">20 点</span>伤害</div></div>
+                  <div class="pp-right"><div class="pp-value">30</div><div style="font-size:10px;color:rgba(240,232,255,0.35)">点总伤害</div></div>
+                </div>
+                <div>
+                  <div class="reward-item">
+                    <div class="reward-node claimed">✓</div>
+                    <div class="reward-info"><div class="reward-milestone">累计伤害达 <strong style="color:#FFD060">10</strong> 点</div><div class="reward-amount">⚡ +500 电量</div></div>
+                    <button class="reward-claim-btn claimed-state" disabled>已领取</button>
+                  </div>
+                  <div class="reward-item">
+                    <div class="reward-node">🔒</div>
+                    <div class="reward-info">
+                      <div class="reward-milestone">累计伤害达 <strong style="color:#FFD060">50</strong> 点</div>
+                      <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
+                        <div style="width:32px;height:32px;border-radius:6px;background:linear-gradient(135deg,#9B5CFF,#FF2D87);display:flex;align-items:center;justify-content:center;font-size:16px;border:1px solid rgba(155,92,255,0.3);">🏅</div>
+                        <div><div style="font-size:12px;font-weight:700;color:#C89EFF;">初级挑战者</div><div style="font-size:9px;color:rgba(240,232,255,0.35);">勋章奖励</div></div>
+                      </div>
+                    </div>
+                    <button class="reward-claim-btn claimed-state" disabled>未达标</button>
+                  </div>
+                  <div class="reward-item">
+                    <div class="reward-node">🔒</div>
+                    <div class="reward-info"><div class="reward-milestone">累计伤害达 <strong style="color:#FFD060">100</strong> 点</div><div class="reward-amount">⚡ +2,000 电量</div></div>
+                    <button class="reward-claim-btn claimed-state" disabled>未达标</button>
+                  </div>
+                  <div class="reward-item">
+                    <div class="reward-node">🔒</div>
+                    <div class="reward-info">
+                      <div class="reward-milestone">累计伤害达 <strong style="color:#FFD060">200</strong> 点</div>
+                      <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
+                        <div style="width:32px;height:32px;border-radius:6px;background:linear-gradient(135deg,#FFD060,#FF9020);display:flex;align-items:center;justify-content:center;font-size:16px;border:1px solid rgba(255,208,96,0.3);">👑</div>
+                        <div><div style="font-size:12px;font-weight:700;color:#FFD060;">魅魔征服者</div><div style="font-size:9px;color:rgba(240,232,255,0.35);">勋章奖励</div></div>
+                      </div>
+                    </div>
+                    <button class="reward-claim-btn claimed-state" disabled>未达标</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="split-right">
+      <div class="doc-page-title"><span class="icon">🎁</span> H5 进度奖励</div>
+      <div class="doc-card">
+        <div class="sec-num">4.1 功能概述</div>
+        <p>进度奖励弹窗展示玩家的<strong>个人累计伤害</strong>和对应的里程碑奖励。奖励类型分为两种：<strong>电量礼包</strong>和<strong>勋章奖励</strong>。触发条件为个人累计对全服血条造成的总伤害达到后台配置的里程碑值，与全服血条独立计算。</p>
+      </div>
+      <div class="doc-card">
+        <div class="sec-num">4.2 个人进度面板</div>
+        <ul>
+          <li><strong>累计伤害数值：</strong>大号粉色数字（22px, 900 weight），展示个人累计伤害值</li>
+          <li><strong>距下一奖励提示：</strong>如 "还差 20 点伤害"，粉色高亮差值，展示个人累计伤害 / 下一个里程碑目标值</li>
+          <li><strong>所有完成提示：</strong>当全部里程碑达成，显示 "🎉 所有里程碑已完成！"</li>
+        </ul>
+      </div>
+      <div class="doc-card">
+        <div class="sec-num">4.3 里程碑列表</div>
+        <p>纵向时间线布局，节点间有连接线。每个里程碑显示：</p>
+        <ul>
+          <li><strong>节点图标：</strong>🔒（未达标）/ 🎁（已达标未领取，金色发光闪烁高亮）/ ✓（已领取，灰色）</li>
+          <li><strong>伤害阈值：</strong>如 "累计伤害达 50 点"</li>
+          <li><strong>奖励内容（电量类型）：</strong>显示 "⚡ +N 电量"，金色粗体文字</li>
+          <li><strong>奖励内容（勋章类型）：</strong>显示勋章预览图（32×32 圆角图标，渐变色背景）+ 勋章昵称（紫色/金色粗体）+ "勋章奖励" 灰色副标签</li>
+          <li><strong>领取按钮：</strong>未达标（禁用灰色）/ 可领取（金→橙渐变）/ 已领取（灰色 "已领取"）</li>
+        </ul>
+      </div>
+      <div class="doc-card">
+        <div class="sec-num">4.4 里程碑配置</div>
+        <p>后台可自由增删节点、调整阈值和奖励数值。奖励类型有<strong>电量</strong>和<strong>勋章</strong>两种：</p>
+        <ul>
+          <li><span class="tag-inline tag-gold">电量奖励</span> — 即时到账的电量礼包，如 +500 电量、+2,000 电量</li>
+          <li><span class="tag-inline tag-purple">勋章奖励</span> — 通过配置<strong>勋章 ID</strong> 关联勋章系统，自动回显勋章预览图和勋章昵称（如 "初级挑战者"、"魅魔征服者"），领取后展示在用户个人主页</li>
+        </ul>
+      </div>
+      <div class="doc-card">
+        <div class="sec-num">4.5 领取规则</div>
+        <ul>
+          <li>进度达标后用户<strong>手动点击 "领取"</strong> 按钮，<strong>即时到账</strong></li>
+          <li>每个里程碑<strong>不可重复领取</strong>（后端幂等校验，异常请求返回已领取提示，不重复发放）</li>
+          <li>领取后 Toast 提示：电量奖励 "⚡ +N 电量已到账！"；勋章奖励 "🏅 勋章「XXX」已解锁！"</li>
+          <li>活动结束后，已达标但未手动领取的奖励<strong>自动发放至用户账户</strong></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+<div class="tc-wrap">
+  <div class="tc-bar">
+    <span class="tc-arrow">▶</span>
+    <div class="tc-title">📝 测试用例</div>
+    <span class="tc-count">12 条</span>
+  </div>
+  <div class="tc-body">
+    <table class="tc-table">
+      <thead><tr><th>编号</th><th>优先级</th><th>测试场景</th><th>前置条件</th><th>操作步骤</th><th>预期结果</th><th>状态</th></tr></thead>
+      <tbody>
+        <tr><td class="tc-id">TC-RW-01</td><td class="tc-p0">P0</td><td>进度奖励弹窗正常弹出</td><td>主战场页面</td><td>点击「进度奖励」按钮</td><td>弹出进度奖励弹窗，显示累计伤害和里程碑</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-RW-02</td><td class="tc-p0">P0</td><td>累计伤害数值准确</td><td>用户已攻击多次</td><td>查看累计伤害面板</td><td>显示正确的个人总伤害值</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-RW-03</td><td class="tc-p0">P0</td><td>电量奖励领取</td><td>伤害达到电量里程碑</td><td>点击「领取」</td><td>电量即时到账，Toast 提示，按钮变灰</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-RW-04</td><td class="tc-p0">P0</td><td>勋章奖励领取</td><td>伤害达到勋章里程碑</td><td>点击「领取」</td><td>勋章解锁，Toast 提示「勋章 XXX 已解锁」</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-RW-05</td><td class="tc-p0">P0</td><td>不可重复领取</td><td>已领取某里程碑</td><td>尝试再次领取</td><td>按钮为灰色「已领取」，不可点击</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-RW-06</td><td class="tc-p1">P1</td><td>活动结束自动发放</td><td>活动结束，有未领取奖励</td><td>查看用户账户</td><td>已达标未领取的奖励自动发放</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-RW-07</td><td class="tc-p1">P1</td><td>距下一奖励提示</td><td>未达到下一里程碑</td><td>查看进度面板</td><td>显示「还差 N 点伤害」</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-RW-08</td><td class="tc-p0">P0</td><td>领取请求网络异常</td><td>里程碑可领取</td><td>点击「领取」但网络中断</td><td>领取失败，奖励不发放，提示网络异常</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-RW-09</td><td class="tc-p0">P0</td><td>并发领取幂等校验</td><td>里程碑可领取</td><td>快速连续点击「领取」</td><td>仅领取一次，后端幂等，不重复发放</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-RW-10</td><td class="tc-p0">P0</td><td>伤害恰好达到阈值</td><td>累计伤害恰好 = 里程碑值</td><td>查看里程碑状态</td><td>该节点变为可领取，按钮高亮</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-RW-11</td><td class="tc-p0">P0</td><td>全部里程碑已完成</td><td>所有里程碑均已领取</td><td>查看进度面板</td><td>显示「所有里程碑已完成」，无可领取项</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-RW-14</td><td class="tc-p1">P1</td><td>活动结束自动发放-电量和勋章</td><td>活动结束，有未领取电量+勋章</td><td>系统自动发放</td><td>电量自动到账，勋章自动解锁</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+</div>
+
+<!-- ====== TAB: H5·活动规则 ====== -->
+<div class="tab-page" id="page-rules">
+  <div class="split-layout">
+    <div class="split-left">
+      <div class="phone-preview">
+        <div class="h5-scope">
+          <div class="page-inner" style="opacity:0.15;"><div class="bg-grad"></div></div>
+          <div class="modal-overlay">
+            <div class="modal-sheet">
+              <div class="modal-handle"></div>
+              <div class="modal-title"><span>📜</span> 活动规则</div>
+              <div class="modal-body">
+                <div class="rule-section"><h3>🗓 活动时间</h3><p>2025年6月1日 00:00 — 2025年6月14日 23:59（北京时间）</p></div>
+                <div class="rule-section"><h3>⚔️ 活动玩法</h3><ul><li>完成每日任务，获得攻击道具</li><li>使用道具攻击 BOSS，保底 1 点，最高 10 点伤害</li><li>全服共享血条，全体玩家一起挑战 BOSS</li><li>BOSS 血量到达阶段节点，解锁新形态</li></ul></div>
+                <div class="rule-section"><h3>🎁 奖励说明</h3><ul><li>个人累计造成伤害达标，可领取电量礼包</li><li>每个里程碑仅可领取一次</li><li>活动结束后，已达标未领取奖励将自动发放</li></ul></div>
+                <div class="rule-section"><h3>⚡ 道具说明</h3><ul><li>闪电符文：完成单日消耗电量任务获得</li><li>潮汐晶石：完成单日充值金额任务获得</li><li>活动结束后道具清零，不予补偿</li></ul></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="split-right">
+      <div class="doc-page-title"><span class="icon">📜</span> H5 活动规则</div>
+      <div class="doc-card">
+        <div class="sec-num">5.1 功能概述</div>
+        <p>活动规则弹窗为<strong>只读信息展示</strong>页，向用户说明活动的时间、玩法、奖励和道具规则。从主战场顶部 "规则" 按钮触发。内容由后台<strong>富文本配置</strong>，支持图文。</p>
+      </div>
+      <div class="doc-card">
+        <div class="sec-num">5.2 内容结构</div>
+        <p>规则内容分为四个板块，每个板块有 Emoji 标题：</p>
+        <ul>
+          <li><strong>🗓 活动时间：</strong>明确起止日期和时区（北京时间 UTC+8）</li>
+          <li><strong>⚔️ 活动玩法：</strong>核心游戏循环 — 完成任务 → 获取道具 → 攻击 BOSS → 全服血条下降 → 解锁新形态</li>
+          <li><strong>🎁 奖励说明：</strong>个人累计伤害达标可领取电量礼包，每个里程碑仅领取一次，活动结束后未领取奖励自动发放</li>
+          <li><strong>⚡ 道具说明：</strong>两种道具获取方式、无论命中与否均消耗、活动结束后道具清零不补偿</li>
+        </ul>
+      </div>
+      <div class="doc-card">
+        <div class="sec-num">5.3 视觉规范</div>
+        <ul>
+          <li>标题颜色：<code>var(--purple)</code> #9B5CFF</li>
+          <li>正文颜色：<code>var(--text-2)</code> 半透明白色</li>
+          <li>字体大小：标题 13px 700w，正文 12px</li>
+          <li>行高：1.8，确保阅读舒适度</li>
+          <li>列表缩进：16px</li>
+        </ul>
+      </div>
+      <div class="doc-card">
+        <div class="sec-num">5.4 后台配置</div>
+        <p>规则文案在管理后台 "活动基础信息" → "规则说明" 文本域中编辑。支持多行文本，前端按换行符分段渲染。</p>
+      </div>
+    </div>
+  </div>
+
+<div class="tc-wrap">
+  <div class="tc-bar">
+    <span class="tc-arrow">▶</span>
+    <div class="tc-title">📝 测试用例</div>
+    <span class="tc-count">5 条</span>
+  </div>
+  <div class="tc-body">
+    <table class="tc-table">
+      <thead><tr><th>编号</th><th>优先级</th><th>测试场景</th><th>前置条件</th><th>操作步骤</th><th>预期结果</th><th>状态</th></tr></thead>
+      <tbody>
+        <tr><td class="tc-id">TC-RL-01</td><td class="tc-p0">P0</td><td>规则弹窗正常弹出</td><td>主战场页面</td><td>点击顶部「规则」按钮</td><td>弹出活动规则弹窗</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-RL-03</td><td class="tc-p1">P1</td><td>后台修改规则生效</td><td>后台修改规则文案</td><td>用户重新打开规则弹窗</td><td>显示最新规则内容</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-RL-04</td><td class="tc-p1">P1</td><td>规则内容为空</td><td>后台未配置规则文案</td><td>点击「规则」打开弹窗</td><td>弹窗正常打开，显示默认空态或提示</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-RL-05</td><td class="tc-p1">P1</td><td>超长规则内容滚动</td><td>后台配置了大量规则文字</td><td>打开规则弹窗并滚动</td><td>内容可正常滚动，不溢出不截断</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-RL-06</td><td class="tc-p1">P1</td><td>关闭规则弹窗</td><td>规则弹窗已打开</td><td>点击 ✕ 或遮罩区域</td><td>弹窗关闭，返回主战场</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+</div>
+
+<!-- ====== TAB: 后台·活动管理 ====== -->
+<div class="tab-page" id="page-adActList">
+  <div class="split-layout">
+    <div class="split-left" style="width:560px;background:#0D1117;">
+      <div style="width:100%;height:100%;overflow:auto;padding:20px;">
+        <div class="admin-scope">
+          <div class="card">
+            <div class="card-header">
+              <div><div class="card-title">活动列表</div><div class="card-desc" style="font-size:11px;color:var(--text3);margin-top:1px;">管理所有活动，支持新增、编辑、删除</div></div>
+              <div style="margin-left:auto;"><button class="header-btn primary" style="font-size:11px;">＋ 新增活动</button></div>
+            </div>
+            <div style="overflow-x:auto;">
+              <table>
+                <thead><tr><th>活动 ID</th><th>活动名称</th><th>类型</th><th>开始时间</th><th>结束时间</th><th>状态</th><th>操作</th></tr></thead>
+                <tbody>
+                  <tr><td style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent2);font-weight:600;">1</td><td style="font-weight:600;">魅魔来袭，召唤挑战</td><td>🎭 Live2D</td><td style="font-size:11px;color:var(--text2);">2025-06-01</td><td style="font-size:11px;color:var(--text2);">2025-06-14</td><td><span class="tag tag-green">启用</span></td><td style="white-space:nowrap;"><button class="header-btn" style="height:22px;font-size:10px;padding:0 8px;margin-right:4px;">编辑</button><button class="header-btn" style="height:22px;font-size:10px;padding:0 8px;color:var(--red);border-color:rgba(255,77,109,0.3);">删除</button></td></tr>
+                  <tr><td style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent2);font-weight:600;">2</td><td style="font-weight:600;">夏日充值狂欢</td><td>⚡ 消耗</td><td style="font-size:11px;color:var(--text2);">2025-06-15</td><td style="font-size:11px;color:var(--text2);">2025-06-30</td><td><span class="tag tag-green">启用</span></td><td style="white-space:nowrap;"><button class="header-btn" style="height:22px;font-size:10px;padding:0 8px;margin-right:4px;">编辑</button><button class="header-btn" style="height:22px;font-size:10px;padding:0 8px;color:var(--red);border-color:rgba(255,77,109,0.3);">删除</button></td></tr>
+                  <tr><td style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent2);font-weight:600;">3</td><td style="font-weight:600;">五一消耗活动</td><td>⚡ 消耗</td><td style="font-size:11px;color:var(--text2);">2025-05-01</td><td style="font-size:11px;color:var(--text2);">2025-05-07</td><td><span class="tag" style="background:rgba(255,77,109,0.1);color:#FF4D6D;border:1px solid rgba(255,77,109,0.2);">禁用</span></td><td style="white-space:nowrap;"><button class="header-btn" style="height:22px;font-size:10px;padding:0 8px;margin-right:4px;">编辑</button><button class="header-btn" style="height:22px;font-size:10px;padding:0 8px;color:var(--red);border-color:rgba(255,77,109,0.3);">删除</button></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- 新增活动弹窗（内联展示） -->
+          <div class="card" style="border-color:rgba(155,92,255,0.3);box-shadow:0 0 12px rgba(155,92,255,0.08);">
+            <div class="card-header" style="border-bottom-color:rgba(155,92,255,0.2);">
+              <div style="font-size:16px;">➕</div>
+              <div class="card-title">新增活动</div>
+            </div>
+            <div class="card-body">
+              <div class="form-group"><div class="form-label">选择活动类型 <span style="color:var(--accent);">*</span></div></div>
+              <div style="display:flex;gap:12px;margin-bottom:16px;">
+                <div style="flex:1;background:var(--bg3);border:2px solid var(--border);border-radius:10px;padding:16px;text-align:center;cursor:pointer;">
+                  <div style="font-size:24px;margin-bottom:6px;">⚡</div>
+                  <div style="font-size:13px;font-weight:700;color:var(--text1);">消耗电量活动</div>
+                  <div style="font-size:10px;color:var(--text3);margin-top:4px;">基于用户消耗/充值行为的简单活动</div>
+                </div>
+                <div style="flex:1;background:rgba(255,45,135,0.04);border:2px solid rgba(255,45,135,0.4);border-radius:10px;padding:16px;text-align:center;cursor:pointer;box-shadow:0 0 12px rgba(255,45,135,0.08);">
+                  <div style="font-size:24px;margin-bottom:6px;">🎭</div>
+                  <div style="font-size:13px;font-weight:700;color:#FF2D87;">Live2D 活动</div>
+                  <div style="font-size:10px;color:var(--text3);margin-top:4px;">含 BOSS 战斗和形态切换的互动活动</div>
+                </div>
+              </div>
+              <div style="display:flex;justify-content:flex-end;gap:8px;padding-top:14px;border-top:1px solid var(--border);">
+                <button class="header-btn" style="font-size:11px;">取消</button>
+                <button class="header-btn primary" style="font-size:11px;">创建活动</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="split-right">
+      <div class="doc-page-title"><span class="icon">🗂️</span> 后台 · 活动管理</div>
+      <div class="doc-card">
+        <div class="sec-num">6.1 功能概述</div>
+        <p>活动管理页为管理后台的<strong>首页</strong>，以表格形式展示所有活动的基本信息，支持新增、编辑、删除、启用/禁用操作。支持的活动类型包括 Live2D 互动活动和消耗电量活动。</p>
+      </div>
+      <div class="doc-card">
+        <div class="sec-num">6.2 表格字段</div>
+        <ul>
+          <li><strong>活动 ID：</strong>纯数字自增 ID（1、2、3…），等宽字体显示</li>
+          <li><strong>活动名称：</strong>加粗显示</li>
+          <li><strong>活动类型：</strong>🎭 Live2D 活动 / ⚡ 消耗电量活动</li>
+          <li><strong>活动时间：</strong>拆为 "开始时间" 和 "结束时间" 两列，等宽字体显示日期</li>
+          <li><strong>状态标签：</strong><span class="tag-inline tag-green">启用</span> / <span class="tag-inline tag-pink">禁用</span>，仅有两种状态，由活动编辑内的开关控制（开启为启用，关闭为禁用）</li>
+          <li><strong>操作：</strong>编辑按钮 + 删除按钮（红色），每行独立操作</li>
+        </ul>
+      </div>
+      <div class="doc-card">
+        <div class="sec-num">6.3 新增活动弹窗</div>
+        <p>点击 "＋ 新增活动" 弹出模态框：</p>
+        <ul>
+          <li>选择活动类型：卡片式双选（消耗电量 / Live2D），选中态有粉色边框</li>
+          <li>Live2D 类型创建后跳转到活动配置页</li>
+          <li>消耗类型直接创建并显示在列表</li>
+        </ul>
+      </div>
+      <div class="doc-card">
+        <div class="sec-num">6.4 编辑 / 删除逻辑</div>
+        <p><strong>编辑：</strong>Live2D 类型跳转到 "活动配置" 页并显示 Toast；消耗类型弹出编辑弹窗。<br>
+        <strong>删除：</strong>弹出 <code>confirm</code> 对话框，确认后从列表移除并显示 Toast。建议记录关键操作日志（谁修改了什么），用于运营审计。</p>
+      </div>
+    </div>
+  </div>
+
+<div class="tc-wrap">
+  <div class="tc-bar">
+    <span class="tc-arrow">▶</span>
+    <div class="tc-title">📝 测试用例</div>
+    <span class="tc-count">11 条</span>
+  </div>
+  <div class="tc-body">
+    <table class="tc-table">
+      <thead><tr><th>编号</th><th>优先级</th><th>测试场景</th><th>前置条件</th><th>操作步骤</th><th>预期结果</th><th>状态</th></tr></thead>
+      <tbody>
+        <tr><td class="tc-id">TC-AM-01</td><td class="tc-p0">P0</td><td>活动列表正常加载</td><td>进入活动管理页</td><td>观察表格</td><td>所有活动按 ID 列出，字段完整</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-AM-02</td><td class="tc-p0">P0</td><td>新增活动弹窗</td><td>活动管理页</td><td>点击「＋ 新增活动」</td><td>弹出模态框，展示消耗电量/Live2D 双选卡片</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-AM-03</td><td class="tc-p0">P0</td><td>启用/禁用状态显示</td><td>活动列表</td><td>在活动编辑内切换开关</td><td>列表中状态标签对应更新为启用/禁用</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-AM-04</td><td class="tc-p0">P0</td><td>编辑跳转</td><td>Live2D 类型活动</td><td>点击「编辑」</td><td>跳转至活动配置页</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-AM-05</td><td class="tc-p0">P0</td><td>删除二次确认</td><td>活动列表</td><td>点击「删除」</td><td>弹出确认对话框，确认后移除</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-AM-06</td><td class="tc-p1">P1</td><td>时间字段分列展示</td><td>活动列表</td><td>观察时间列</td><td>开始时间和结束时间分为两列</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-AM-07</td><td class="tc-p0">P0</td><td>删除启用中的活动</td><td>某活动状态为启用</td><td>点击「删除」并确认</td><td>二次确认警告提示「该活动正在启用中」，确认后删除</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-AM-08</td><td class="tc-p1">P1</td><td>删除取消操作</td><td>活动列表</td><td>点击「删除」后点击「取消」</td><td>活动不被删除，列表不变</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-AM-09</td><td class="tc-p1">P1</td><td>空列表展示</td><td>无任何活动</td><td>进入活动管理页</td><td>显示空态提示，引导新增活动</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-AM-10</td><td class="tc-p1">P1</td><td>活动名称过长</td><td>新增活动</td><td>输入超长活动名称（100+ 字符）</td><td>截断或校验提示，不影响列表布局</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-AM-11</td><td class="tc-p0">P0</td><td>新增活动-Live2D 类型跳转</td><td>新增活动弹窗</td><td>选择 Live2D 类型并创建</td><td>创建后自动跳转至活动配置页</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+</div>
+
+<!-- ====== TAB: 后台·Banner ====== -->
+<div class="tab-page" id="page-adBanner">
+  <div class="split-layout">
+    <div class="split-left" style="width:560px;background:#0D1117;">
+      <div style="width:100%;height:100%;overflow:auto;padding:20px;">
+        <div class="admin-scope">
+          <div class="card">
+            <div class="card-header"><div><div class="card-title">Banner 配置</div><div class="card-desc" style="font-size:11px;color:var(--text3);margin-top:1px;">设置活动入口 Banner 图及点击跳转目标</div></div><div style="margin-left:auto;"><button class="header-btn primary" style="font-size:11px;">＋ 新增 Banner</button></div></div>
+            <div class="card-body">
+              <!-- Banner 总开关 -->
+              <div class="toggle-row" style="margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border);"><div class="toggle-info"><h4>Banner 总开关</h4><p>关闭后前端不展示任何 Banner</p></div><div class="toggle on"></div></div>
+              <div class="section-title">Banner 列表</div>
+              <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:10px;margin-bottom:12px;">
+                <div style="display:flex;gap:14px;align-items:flex-start;">
+                  <div style="width:160px;height:70px;background:linear-gradient(135deg,#FF2D87,#9B5CFF);border-radius:6px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;color:white;font-weight:600;">两周年活动 Banner</div>
+                  <div style="flex:1;">
+                    <div class="form-group"><div class="form-label">跳转活动 ID</div><div class="form-control" style="display:flex;align-items:center;font-size:12px;">1 · 魅魔来袭</div></div>
+                    <div class="form-group"><div class="form-label">排序权重</div><div class="form-control" style="width:80px;display:flex;align-items:center;">1</div></div>
+                  </div>
+                  <button class="header-btn" style="height:28px;font-size:10px;padding:0 8px;color:var(--red);border-color:rgba(255,77,109,0.3);flex-shrink:0;align-self:center;">删除</button>
+                </div>
+                <div style="border-top:1px solid var(--border);padding-top:10px;display:flex;flex-direction:column;gap:8px;">
+                  <div style="display:flex;align-items:center;justify-content:space-between;">
+                    <div style="display:flex;align-items:center;gap:8px;"><div class="toggle on" style="width:32px;height:18px;"></div><div><div style="font-size:11px;font-weight:600;color:var(--text1);">Banner 开关</div><div style="font-size:9px;color:var(--text3);">关闭后该 Banner 不在前端展示</div></div></div>
+                    <span class="tag tag-green" style="font-size:9px;">展示中</span>
+                  </div>
+                  <div style="display:flex;align-items:center;justify-content:space-between;">
+                    <div style="display:flex;align-items:center;gap:8px;"><div class="toggle on" style="width:32px;height:18px;"></div><div><div style="font-size:11px;font-weight:600;color:var(--text1);">活动倒计时</div><div style="font-size:9px;color:var(--text3);">开启后 Banner 右侧显示领取按钮和倒计时</div></div></div>
+                    <div style="display:flex;align-items:center;gap:6px;background:var(--bg4);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:10px;color:var(--text2);">
+                      <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--green);"></span> 预览：<span style="color:var(--accent2);">图片 + 按钮 + 倒计时</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:10px;">
+                <div style="display:flex;gap:14px;align-items:flex-start;">
+                  <div style="width:160px;height:70px;background:linear-gradient(135deg,#9B5CFF,#00D4FF);border-radius:6px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;color:white;font-weight:600;">夏日充值 Banner</div>
+                  <div style="flex:1;">
+                    <div class="form-group"><div class="form-label">跳转活动 ID</div><div class="form-control" style="display:flex;align-items:center;font-size:12px;">2 · 夏日充值</div></div>
+                    <div class="form-group"><div class="form-label">排序权重</div><div class="form-control" style="width:80px;display:flex;align-items:center;">2</div></div>
+                  </div>
+                  <button class="header-btn" style="height:28px;font-size:10px;padding:0 8px;color:var(--red);border-color:rgba(255,77,109,0.3);flex-shrink:0;align-self:center;">删除</button>
+                </div>
+                <div style="border-top:1px solid var(--border);padding-top:10px;display:flex;flex-direction:column;gap:8px;">
+                  <div style="display:flex;align-items:center;justify-content:space-between;">
+                    <div style="display:flex;align-items:center;gap:8px;"><div class="toggle" style="width:32px;height:18px;"></div><div><div style="font-size:11px;font-weight:600;color:var(--text2);">Banner 开关</div><div style="font-size:9px;color:var(--text3);">关闭后该 Banner 不在前端展示</div></div></div>
+                    <span style="font-size:9px;color:var(--text3);background:rgba(255,255,255,0.04);padding:2px 8px;border-radius:4px;">已隐藏</span>
+                  </div>
+                  <div style="display:flex;align-items:center;justify-content:space-between;opacity:0.4;">
+                    <div style="display:flex;align-items:center;gap:8px;"><div class="toggle" style="width:32px;height:18px;"></div><div><div style="font-size:11px;font-weight:600;color:var(--text2);">活动倒计时</div><div style="font-size:9px;color:var(--text3);">关闭时仅显示 Banner 图片</div></div></div>
+                    <div style="display:flex;align-items:center;gap:6px;background:var(--bg4);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:10px;color:var(--text3);">
+                      <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--text3);"></span> 预览：<span>仅图片</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div class="card-title">展示规则</div></div>
+            <div class="card-body">
+              <div class="toggle-row"><div class="toggle-info"><h4>Banner 轮播</h4><p>多个 Banner 时自动轮播</p></div><div class="toggle on"></div></div>
+              <div class="toggle-row"><div class="toggle-info"><h4>轮播间隔（秒）</h4><p>自动切换 Banner 的时间间隔</p></div><div class="form-control" style="width:80px;text-align:center;display:flex;align-items:center;justify-content:center;">5</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="split-right">
+      <div class="doc-page-title"><span class="icon">🖼️</span> 后台 · Banner 管理</div>
+      <div class="doc-card">
+        <div class="sec-num">7.1 功能概述</div>
+        <p>Banner 管理页用于配置活动入口的<strong>轮播 Banner 图</strong>，可设置图片、跳转目标活动和排序权重。顶部提供 <strong>Banner 总开关</strong>（关闭后前端不展示任何 Banner）和 "＋ 新增 Banner" 按钮。</p>
+      </div>
+      <div class="doc-card">
+        <div class="sec-num">7.2 Banner 列表</div>
+        <p>每条 Banner 包含：</p>
+        <ul>
+          <li><strong>Banner 图片：</strong>建议尺寸 750×200px，支持 JPG/PNG/WebP 上传，hover 显示上传提示</li>
+          <li><strong>跳转活动 ID：</strong>下拉选择已有活动</li>
+          <li><strong>排序权重：</strong>数值越小越靠前</li>
+          <li><strong>删除按钮：</strong>红色边框按钮，点击后二次确认删除</li>
+          <li><strong>Banner 开关：</strong>每条 Banner 独立的 Toggle 控件，控制该条 Banner 是否在前端展示</li>
+          <li><strong>活动倒计时开关：</strong>每条 Banner 独立配置的 Toggle 控件，控制前端 Banner 的展示模式</li>
+        </ul>
+      </div>
+      <div class="doc-card">
+        <div class="sec-num">7.2.1 单个 Banner 开关</div>
+        <p>每条 Banner 卡片底部有独立的 Banner 开关，控制该条 Banner 的展示状态：</p>
+        <ul>
+          <li><strong>开启：</strong>该 Banner 正常在前端展示，右侧显示绿色「展示中」标签</li>
+          <li><strong>关闭：</strong>该 Banner 不在前端展示，右侧显示灰色「已隐藏」标签，倒计时开关区域置灰不可操作</li>
+          <li><strong>与总开关关系：</strong>Banner 总开关关闭时，所有 Banner 均不展示，与单个开关无关</li>
+        </ul>
+      </div>
+      <div class="doc-card">
+        <div class="sec-num">7.2.2 活动倒计时开关</div>
+        <p>每条 Banner 底部有独立的倒计时开关，控制该 Banner 在前端的展示形式：</p>
+        <ul>
+          <li><strong>开启：</strong>Banner 展示为「图片 + 文案 + 领取按钮 + 倒计时」模式，右侧显示渐变色领取按钮和 HH:MM:SS 倒计时，适合需要引导用户参与的活动</li>
+          <li><strong>关闭：</strong>Banner 仅展示图片，不显示领取按钮和倒计时，适合纯展示类运营位</li>
+          <li><strong>预览标签：</strong>开关右侧实时显示预览状态（绿点 "图片+按钮+倒计时" / 灰点 "仅图片"）</li>
+        </ul>
+      </div>
+      <div class="doc-card">
+        <div class="sec-num">7.3 展示规则配置</div>
+        <ul>
+          <li><strong>Banner 总开关：</strong>Toggle 控件，关闭后前端隐藏所有 Banner 展示区域</li>
+          <li><strong>Banner 轮播开关：</strong>Toggle 控件，开启后多 Banner 自动轮播</li>
+          <li><strong>轮播间隔：</strong>数字输入，单位秒，默认 5s</li>
+          <li>单个 Banner 时不展示轮播指示器</li>
+        </ul>
+      </div>
+      <div class="doc-card">
+        <div class="sec-num">7.4 操作交互</div>
+        <p>点击 "＋ 新增 Banner" 按钮新增空白条目。每条 Banner 右侧有独立删除按钮，删除后 Toast 提示 "🗑️ Banner 已删除"。图片上传后即时预览。</p>
+      </div>
+    </div>
+  </div>
+
+<div class="tc-wrap">
+  <div class="tc-bar">
+    <span class="tc-arrow">▶</span>
+    <div class="tc-title">📝 测试用例</div>
+    <span class="tc-count">13 条</span>
+  </div>
+  <div class="tc-body">
+    <table class="tc-table">
+      <thead><tr><th>编号</th><th>优先级</th><th>测试场景</th><th>前置条件</th><th>操作步骤</th><th>预期结果</th><th>状态</th></tr></thead>
+      <tbody>
+        <tr><td class="tc-id">TC-AB-01</td><td class="tc-p0">P0</td><td>Banner 总开关关闭</td><td>Banner 管理页</td><td>关闭总开关</td><td>前端隐藏所有 Banner</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-AB-02</td><td class="tc-p0">P0</td><td>新增 Banner</td><td>Banner 管理页</td><td>点击「＋ 新增 Banner」</td><td>新增空白 Banner 条目</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-AB-03</td><td class="tc-p0">P0</td><td>单个 Banner 开关-开启</td><td>某条 Banner 已关闭</td><td>开启该 Banner 开关</td><td>该 Banner 在前端正常展示，标签显示「展示中」</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-AB-04</td><td class="tc-p0">P0</td><td>单个 Banner 开关-关闭</td><td>某条 Banner 已开启</td><td>关闭该 Banner 开关</td><td>该 Banner 在前端隐藏，标签显示「已隐藏」，倒计时区域置灰</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-AB-05</td><td class="tc-p0">P0</td><td>倒计时开关-开启</td><td>某条 Banner</td><td>开启活动倒计时</td><td>预览标签显示「图片+按钮+倒计时」</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-AB-06</td><td class="tc-p0">P0</td><td>倒计时开关-关闭</td><td>某条 Banner</td><td>关闭活动倒计时</td><td>预览标签显示「仅图片」</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-AB-07</td><td class="tc-p0">P0</td><td>删除 Banner</td><td>Banner 列表</td><td>点击「删除」</td><td>二次确认后移除，Toast 提示</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-AB-08</td><td class="tc-p1">P1</td><td>轮播间隔配置</td><td>Banner 管理页</td><td>修改轮播间隔为 3s</td><td>前端轮播间隔更新为 3s</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-AB-09</td><td class="tc-p1">P1</td><td>上传非图片文件</td><td>新增 Banner</td><td>上传 .pdf 或 .doc 文件</td><td>校验拦截，提示仅支持 JPG/PNG/WebP</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-AB-10</td><td class="tc-p1">P1</td><td>Banner 图片超大</td><td>新增 Banner</td><td>上传 10MB+ 大图片</td><td>上传失败或自动压缩，提示图片大小限制</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-AB-11</td><td class="tc-p0">P0</td><td>所有 Banner 单独关闭</td><td>有 3 条 Banner</td><td>逐个关闭每条 Banner 开关</td><td>前端不展示任何 Banner（等效总开关关闭）</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-AB-12</td><td class="tc-p1">P1</td><td>仅 1 条 Banner 时无轮播</td><td>仅配置 1 条 Banner</td><td>观察前端展示</td><td>不展示轮播指示器，不启用滑动</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-AB-13</td><td class="tc-p1">P1</td><td>删除最后一条 Banner</td><td>仅剩 1 条 Banner</td><td>点击删除并确认</td><td>Banner 列表清空，前端 Banner 区域隐藏</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+</div>
+
+<!-- ====== TAB: 后台·活动配置 ====== -->
+<div class="tab-page" id="page-adConfig">
+  <div class="split-layout">
+    <div class="split-left" style="width:560px;background:#0D1117;">
+      <div style="width:100%;height:100%;overflow:auto;padding:20px;">
+        <div class="admin-scope">
+          <!-- ===== 基础配置 ===== -->
+          <div class="section-title">基础配置</div>
+          <div class="card"><div class="card-header"><div class="card-title">活动开关</div></div>
+            <div class="card-body">
+              <div class="toggle-row"><div class="toggle-info"><h4>活动总开关</h4><p>关闭后用户无法访问活动页</p></div><div class="toggle on"></div></div>
+            </div>
+          </div>
+          <div class="card"><div class="card-header"><div class="card-title">活动基础信息</div></div>
+            <div class="card-body">
+              <div class="form-group"><div class="form-label">活动名称 *</div><div class="form-control" style="display:flex;align-items:center;">魅魔来袭，召唤挑战</div></div>
+              <div class="form-grid-2">
+                <div class="form-group"><div class="form-label">开始时间</div><div class="form-control" style="display:flex;align-items:center;font-size:12px;">2025-06-01T00:00</div></div>
+                <div class="form-group"><div class="form-label">结束时间</div><div class="form-control" style="display:flex;align-items:center;font-size:12px;">2025-06-14T23:59</div></div>
+              </div>
+              <div class="form-group"><div class="form-label">规则说明</div><div class="form-control" style="height:auto;padding:10px 12px;font-size:12px;line-height:1.7;color:var(--text2);white-space:pre-line;">1. 完成每日任务获得攻击道具
+2. 使用道具攻击 BOSS，保底 1 点，最高 10 点伤害
+3. 全服共享血条，一起挑战 BOSS 解锁新形态
+4. 个人累计伤害达标可领取电量礼包</div></div>
+            </div>
+          </div>
+
+          <!-- ===== Live2D 配置 ===== -->
+          <div class="section-title">Live2D 配置</div>
+          <div class="card"><div class="card-header"><div><div class="card-title">形态管理</div><div class="card-desc" style="font-size:11px;color:var(--text3);margin-top:1px;">每个形态可单独上传 Live2D 模型和背景图</div></div><div style="margin-left:auto;"><button class="header-btn" style="font-size:11px;">+ 添加形态</button></div></div>
+            <div class="card-body">
+              <!-- 形态 1 -->
+              <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px 14px;display:flex;align-items:flex-start;gap:12px;margin-bottom:10px;">
+                <div style="width:52px;height:52px;border-radius:8px;background:var(--bg4);border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;">🌟</div>
+                <div style="flex:1;min-width:0;">
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+                    <div style="display:flex;align-items:center;gap:6px;">
+                      <span style="font-size:13px;font-weight:700;">初始形态</span>
+                      <span class="tag tag-green" style="font-size:9px;">默认</span>
+                    </div>
+                    <div style="display:flex;gap:4px;">
+                      <button class="header-btn" style="height:24px;font-size:10px;padding:0 8px;">动作映射</button>
+                    </div>
+                  </div>
+                  <div style="font-size:10px;color:var(--text3);">model_v1.zip · 2.3 MB · 解锁触发：默认</div>
+                  <div style="margin-top:6px;display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--bg4);border:1px dashed var(--border);border-radius:5px;">
+                    <span style="font-size:14px;">🌌</span>
+                    <div style="flex:1;"><div style="font-size:11px;color:var(--text1);">宇宙星云.jpg</div><div style="font-size:9px;color:var(--text3);">1920×1080 · 已设置</div></div>
+                    <span style="font-size:10px;color:var(--accent2);">更换</span>
+                  </div>
+                </div>
+              </div>
+              <!-- 形态 2 -->
+              <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px 14px;display:flex;align-items:flex-start;gap:12px;margin-bottom:10px;">
+                <div style="width:52px;height:52px;border-radius:8px;background:var(--bg4);border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;">🌸</div>
+                <div style="flex:1;min-width:0;">
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+                    <div style="display:flex;align-items:center;gap:6px;">
+                      <span style="font-size:13px;font-weight:700;">觉醒形态</span>
+                      <span class="tag" style="font-size:9px;background:rgba(155,92,255,0.12);color:#9B5CFF;border:1px solid rgba(155,92,255,0.2);">HP ≤ 75%</span>
+                      <span style="font-size:10px;">🔒</span>
+                    </div>
+                    <div style="display:flex;gap:4px;">
+                      <button class="header-btn" style="height:24px;font-size:10px;padding:0 8px;">动作映射</button>
+                    </div>
+                  </div>
+                  <div style="font-size:10px;color:var(--text3);">model_v2.zip · 3.1 MB · 解锁触发：HP 降至 75%</div>
+                  <div style="margin-top:6px;display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--bg4);border:1px dashed var(--border);border-radius:5px;">
+                    <span style="font-size:14px;">🌸</span>
+                    <div style="flex:1;"><div style="font-size:11px;color:var(--text1);">樱花背景.jpg</div><div style="font-size:9px;color:var(--text3);">1920×1080 · 已设置</div></div>
+                    <span style="font-size:10px;color:var(--accent2);">更换</span>
+                  </div>
+                </div>
+              </div>
+              <!-- 添加形态入口 -->
+              <div style="background:var(--bg3);border:1px dashed var(--border);border-radius:8px;padding:14px;display:flex;align-items:center;gap:12px;opacity:0.5;cursor:pointer;">
+                <div style="width:52px;height:52px;border-radius:8px;border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--text3);flex-shrink:0;">+</div>
+                <div><div style="font-size:12px;color:var(--text3);">添加新形态</div><div style="font-size:10px;color:var(--text3);">点击上传 Live2D 模型文件包</div></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ===== 添加形态弹窗（内联展示） ===== -->
+          <div class="card" style="border-color:rgba(155,92,255,0.3);box-shadow:0 0 12px rgba(155,92,255,0.08);">
+            <div class="card-header" style="border-bottom-color:rgba(155,92,255,0.2);">
+              <div style="font-size:16px;">🎭</div>
+              <div class="card-title">添加 Live2D 形态</div>
+            </div>
+            <div class="card-body">
+              <div class="form-group">
+                <div class="form-label">形态名称 <span style="color:var(--accent);">*</span></div>
+                <div class="form-control" style="display:flex;align-items:center;color:var(--text3);">如：炽焰形态</div>
+              </div>
+              <div class="form-group">
+                <div class="form-label">上传 Live2D 文件包 <span style="color:var(--accent);">*</span></div>
+                <div style="border:1px dashed var(--border);border-radius:8px;padding:18px;text-align:center;color:var(--text3);font-size:12px;">
+                  <div style="font-size:24px;margin-bottom:6px;">☁️</div>
+                  点击或拖拽上传 .zip 文件包<br>
+                  <span style="font-size:10px;">包含 .model3.json 及素材，建议 ≤ 5MB</span>
+                </div>
+              </div>
+              <div class="form-group">
+                <div class="form-label">🖼 形态背景图</div>
+                <div style="border:1px dashed var(--border);border-radius:8px;padding:12px 14px;display:flex;align-items:center;gap:10px;">
+                  <div style="width:52px;height:32px;border-radius:5px;background:var(--bg4);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">🌌</div>
+                  <div style="flex:1;">
+                    <div style="font-size:11px;color:var(--text2);">点击上传背景图</div>
+                    <div style="font-size:9px;color:var(--text3);">建议 1920×1080 或 750×1624，支持 JPG / PNG / WebP</div>
+                  </div>
+                  <div style="font-size:10px;color:var(--accent2);">上传</div>
+                </div>
+                <div style="font-size:10px;color:var(--text3);margin-top:4px;">未上传时使用默认动态星空背景</div>
+              </div>
+              <div class="form-grid-2">
+                <div class="form-group">
+                  <div class="form-label">解锁触发节点</div>
+                  <div class="form-control" style="display:flex;align-items:center;font-size:12px;">血量降至 50%</div>
+                </div>
+                <div class="form-group">
+                  <div class="form-label">形态图标</div>
+                  <div class="form-control" style="display:flex;align-items:center;font-size:12px;">Emoji 如 🔥 💀</div>
+                </div>
+              </div>
+              <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border);">
+                <button class="header-btn" style="font-size:11px;">取消</button>
+                <button class="header-btn primary" style="font-size:11px;">确认添加</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ===== 动作映射配置（内联展示） ===== -->
+          <div class="card" style="border-color:rgba(0,200,255,0.25);box-shadow:0 0 12px rgba(0,200,255,0.06);">
+            <div class="card-header" style="border-bottom-color:rgba(0,200,255,0.15);">
+              <div style="font-size:16px;">🎬</div>
+              <div class="card-title">动作映射配置</div>
+            </div>
+            <div class="card-body">
+              <div style="background:rgba(245,200,66,0.06);border:1px solid rgba(245,200,66,0.2);border-radius:6px;padding:8px 12px;font-size:11px;color:var(--gold);margin-bottom:14px;">动作 ID 需与 Live2D 文件包中 <code style="background:var(--bg4);padding:1px 5px;border-radius:3px;font-size:10px;color:var(--accent2);">.model3.json</code> 内定义的动作名称完全一致</div>
+              <div class="form-group">
+                <div class="form-label">道具 A 攻击动作</div>
+                <div class="form-control" style="display:flex;align-items:center;font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--accent2);">motion_attack_lightning</div>
+                <div style="font-size:10px;color:var(--text3);margin-top:2px;">使用闪电符文攻击时触发</div>
+              </div>
+              <div class="form-group">
+                <div class="form-label">道具 B 攻击动作</div>
+                <div class="form-control" style="display:flex;align-items:center;font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--accent2);">motion_attack_water</div>
+                <div style="font-size:10px;color:var(--text3);margin-top:2px;">使用潮汐晶石攻击时触发</div>
+              </div>
+              <div class="form-group">
+                <div class="form-label">待机动作（循环）</div>
+                <div class="form-control" style="display:flex;align-items:center;font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--accent2);">motion_idle</div>
+                <div style="font-size:10px;color:var(--text3);margin-top:2px;">无交互时持续循环播放</div>
+              </div>
+              <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border);">
+                <button class="header-btn" style="font-size:11px;">取消</button>
+                <button class="header-btn primary" style="font-size:11px;">保存</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ===== BOSS 血条管理 ===== -->
+          <div class="section-title">BOSS 血条管理</div>
+          <div class="card"><div class="card-header"><div><div class="card-title">血量配置</div><div class="card-desc" style="font-size:11px;color:var(--text3);margin-top:1px;">修改当前血量将实时影响前端展示</div></div><div style="margin-left:auto;display:flex;align-items:center;gap:4px;background:rgba(61,214,140,0.1);border:1px solid rgba(61,214,140,0.2);padding:2px 8px;border-radius:8px;font-size:10px;color:var(--green);font-weight:600;"><span style="width:5px;height:5px;border-radius:50%;background:var(--green);"></span>实时生效</div></div>
+            <div class="card-body">
+              <div class="form-grid-3">
+                <div class="form-group"><div class="form-label">总血量 *</div><div class="form-control" style="display:flex;align-items:center;">100,000</div></div>
+                <div class="form-group"><div class="form-label">当前血量（运营干预）</div><div class="form-control" style="display:flex;align-items:center;">72,500</div></div>
+                <div class="form-group" style="justify-content:flex-end;"><button class="header-btn primary" style="margin-top:18px;font-size:11px;">应用修改</button></div>
+              </div>
+              <div class="hp-preview"><div class="hp-fill"></div></div>
+              <div style="display:flex;justify-content:space-between;margin-top:4px;"><span style="font-size:11px;color:var(--text3)">0</span><span style="font-size:11px;color:var(--accent);font-family:'JetBrains Mono',monospace">72,500 / 100,000 (72.5%)</span><span style="font-size:11px;color:var(--text3)">100,000</span></div>
+            </div>
+          </div>
+
+          <!-- 道具与伤害配置 -->
+          <div class="section-title">道具配置</div>
+
+          <!-- 道具 A 完整配置 -->
+          <div class="card" style="border-left:3px solid #FF2D87;">
+            <div class="card-header"><div style="display:flex;align-items:center;gap:8px;"><div style="width:28px;height:28px;border-radius:6px;background:linear-gradient(135deg,rgba(255,45,135,0.2),rgba(255,45,135,0.05));border:1px solid rgba(255,45,135,0.3);display:flex;align-items:center;justify-content:center;font-size:14px;">⚡</div><div><div class="card-title" style="margin:0;">道具 A 配置</div><div style="font-size:10px;color:var(--text3);margin-top:1px;">消耗任务获得</div></div></div></div>
+            <div class="card-body">
+              <!-- 基础信息 -->
+              <div class="form-grid-2" style="margin-bottom:14px;">
+                <div class="form-group"><div class="form-label">道具名称 *</div><div class="form-control" style="display:flex;align-items:center;">闪电符文</div></div>
+                <div class="form-group"><div class="form-label">获取方式</div><div class="form-control" style="display:flex;align-items:center;color:var(--text3);font-size:11px;">消耗任务</div></div>
+              </div>
+              <!-- 伤害配置 -->
+              <div style="background:rgba(255,45,135,0.03);border:1px solid rgba(255,45,135,0.1);border-radius:8px;padding:12px;margin-bottom:14px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                  <div style="font-size:11px;font-weight:700;color:var(--text1);">伤害值与触发概率</div>
+                  <button class="header-btn" style="height:22px;font-size:9px;padding:0 8px;">+ 添加伤害值</button>
+                </div>
+                <!-- 表头 -->
+                <div style="display:grid;grid-template-columns:50px 1fr 60px auto;gap:6px;padding:0 0 6px;border-bottom:1px solid rgba(255,255,255,0.06);margin-bottom:6px;">
+                  <span style="font-size:9px;color:var(--text3);font-weight:600;">伤害值</span>
+                  <span style="font-size:9px;color:var(--text3);font-weight:600;">概率柱</span>
+                  <span style="font-size:9px;color:var(--text3);font-weight:600;">触发概率</span>
+                  <span></span>
+                </div>
+                <!-- 行列表 -->
+                <div style="display:flex;flex-direction:column;gap:5px;">
+                  <div style="display:grid;grid-template-columns:50px 1fr 60px auto;gap:6px;align-items:center;">
+                    <div class="form-control" style="height:26px;font-size:11px;text-align:center;display:flex;align-items:center;justify-content:center;">1</div>
+                    <div style="height:14px;background:rgba(255,255,255,0.04);border-radius:3px;overflow:hidden;"><div style="height:100%;width:30%;background:#9B5CFF;border-radius:3px;"></div></div>
+                    <div class="form-control" style="height:26px;font-size:11px;text-align:center;display:flex;align-items:center;justify-content:center;">30%</div>
+                    <button class="header-btn" style="height:22px;font-size:9px;padding:0 4px;color:var(--red);border-color:rgba(255,77,109,0.3);">×</button>
+                  </div>
+                  <div style="display:grid;grid-template-columns:50px 1fr 60px auto;gap:6px;align-items:center;">
+                    <div class="form-control" style="height:26px;font-size:11px;text-align:center;display:flex;align-items:center;justify-content:center;">2</div>
+                    <div style="height:14px;background:rgba(255,255,255,0.04);border-radius:3px;overflow:hidden;"><div style="height:100%;width:25%;background:#FF2D87;border-radius:3px;"></div></div>
+                    <div class="form-control" style="height:26px;font-size:11px;text-align:center;display:flex;align-items:center;justify-content:center;">25%</div>
+                    <button class="header-btn" style="height:22px;font-size:9px;padding:0 4px;color:var(--red);border-color:rgba(255,77,109,0.3);">×</button>
+                  </div>
+                  <div style="display:grid;grid-template-columns:50px 1fr 60px auto;gap:6px;align-items:center;">
+                    <div class="form-control" style="height:26px;font-size:11px;text-align:center;display:flex;align-items:center;justify-content:center;">3</div>
+                    <div style="height:14px;background:rgba(255,255,255,0.04);border-radius:3px;overflow:hidden;"><div style="height:100%;width:20%;background:#FF8030;border-radius:3px;"></div></div>
+                    <div class="form-control" style="height:26px;font-size:11px;text-align:center;display:flex;align-items:center;justify-content:center;">20%</div>
+                    <button class="header-btn" style="height:22px;font-size:9px;padding:0 4px;color:var(--red);border-color:rgba(255,77,109,0.3);">×</button>
+                  </div>
+                  <div style="display:grid;grid-template-columns:50px 1fr 60px auto;gap:6px;align-items:center;">
+                    <div class="form-control" style="height:26px;font-size:11px;text-align:center;display:flex;align-items:center;justify-content:center;">5</div>
+                    <div style="height:14px;background:rgba(255,255,255,0.04);border-radius:3px;overflow:hidden;"><div style="height:100%;width:15%;background:#F5C842;border-radius:3px;"></div></div>
+                    <div class="form-control" style="height:26px;font-size:11px;text-align:center;display:flex;align-items:center;justify-content:center;">15%</div>
+                    <button class="header-btn" style="height:22px;font-size:9px;padding:0 4px;color:var(--red);border-color:rgba(255,77,109,0.3);">×</button>
+                  </div>
+                  <div style="display:grid;grid-template-columns:50px 1fr 60px auto;gap:6px;align-items:center;">
+                    <div class="form-control" style="height:26px;font-size:11px;text-align:center;display:flex;align-items:center;justify-content:center;">10</div>
+                    <div style="height:14px;background:rgba(255,255,255,0.04);border-radius:3px;overflow:hidden;"><div style="height:100%;width:10%;background:#3DD68C;border-radius:3px;"></div></div>
+                    <div class="form-control" style="height:26px;font-size:11px;text-align:center;display:flex;align-items:center;justify-content:center;">10%</div>
+                    <button class="header-btn" style="height:22px;font-size:9px;padding:0 4px;color:var(--red);border-color:rgba(255,77,109,0.3);">×</button>
+                  </div>
+                </div>
+                <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:10px;">
+                  <span style="color:var(--text3);">共 5 项</span>
+                  <span>总计：<span style="color:var(--green);font-weight:700;">100%</span></span>
+                </div>
+              </div>
+              <!-- 任务配置 -->
+              <div style="font-size:11px;font-weight:700;color:var(--text1);margin-bottom:8px;">获取任务配置</div>
+              <div class="form-grid-2">
+                <div class="form-group"><div class="form-label" style="font-size:10px;">单次完成阈值（电量）*</div><div class="form-control" style="display:flex;align-items:center;height:28px;font-size:12px;">500</div><div style="font-size:9px;color:var(--text3);margin-top:2px;">单日累计消耗达到此值完成一次</div></div>
+                <div class="form-group"><div class="form-label" style="font-size:10px;">每日上限次数 *</div><div class="form-control" style="display:flex;align-items:center;height:28px;font-size:12px;">3</div><div style="font-size:9px;color:var(--text3);margin-top:2px;">每日 00:00 重置</div></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 道具 B 完整配置 -->
+          <div class="card" style="border-left:3px solid #00D4FF;">
+            <div class="card-header"><div style="display:flex;align-items:center;gap:8px;"><div style="width:28px;height:28px;border-radius:6px;background:linear-gradient(135deg,rgba(0,212,255,0.2),rgba(0,212,255,0.05));border:1px solid rgba(0,212,255,0.3);display:flex;align-items:center;justify-content:center;font-size:14px;">🌊</div><div><div class="card-title" style="margin:0;">道具 B 配置</div><div style="font-size:10px;color:var(--text3);margin-top:1px;">充值任务获得</div></div></div></div>
+            <div class="card-body">
+              <!-- 基础信息 -->
+              <div class="form-grid-2" style="margin-bottom:14px;">
+                <div class="form-group"><div class="form-label">道具名称 *</div><div class="form-control" style="display:flex;align-items:center;">潮汐晶石</div></div>
+                <div class="form-group"><div class="form-label">获取方式</div><div class="form-control" style="display:flex;align-items:center;color:var(--text3);font-size:11px;">充值任务</div></div>
+              </div>
+              <!-- 伤害配置 -->
+              <div style="background:rgba(0,212,255,0.03);border:1px solid rgba(0,212,255,0.1);border-radius:8px;padding:12px;margin-bottom:14px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                  <div style="font-size:11px;font-weight:700;color:var(--text1);">伤害值与触发概率</div>
+                  <button class="header-btn" style="height:22px;font-size:9px;padding:0 8px;">+ 添加伤害值</button>
+                </div>
+                <div style="display:grid;grid-template-columns:50px 1fr 60px auto;gap:6px;padding:0 0 6px;border-bottom:1px solid rgba(255,255,255,0.06);margin-bottom:6px;">
+                  <span style="font-size:9px;color:var(--text3);font-weight:600;">伤害值</span>
+                  <span style="font-size:9px;color:var(--text3);font-weight:600;">概率柱</span>
+                  <span style="font-size:9px;color:var(--text3);font-weight:600;">触发概率</span>
+                  <span></span>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:5px;">
+                  <div style="display:grid;grid-template-columns:50px 1fr 60px auto;gap:6px;align-items:center;">
+                    <div class="form-control" style="height:26px;font-size:11px;text-align:center;display:flex;align-items:center;justify-content:center;">1</div>
+                    <div style="height:14px;background:rgba(255,255,255,0.04);border-radius:3px;overflow:hidden;"><div style="height:100%;width:10%;background:#00D4FF;border-radius:3px;"></div></div>
+                    <div class="form-control" style="height:26px;font-size:11px;text-align:center;display:flex;align-items:center;justify-content:center;">10%</div>
+                    <button class="header-btn" style="height:22px;font-size:9px;padding:0 4px;color:var(--red);border-color:rgba(255,77,109,0.3);">×</button>
+                  </div>
+                  <div style="display:grid;grid-template-columns:50px 1fr 60px auto;gap:6px;align-items:center;">
+                    <div class="form-control" style="height:26px;font-size:11px;text-align:center;display:flex;align-items:center;justify-content:center;">3</div>
+                    <div style="height:14px;background:rgba(255,255,255,0.04);border-radius:3px;overflow:hidden;"><div style="height:100%;width:15%;background:#9B5CFF;border-radius:3px;"></div></div>
+                    <div class="form-control" style="height:26px;font-size:11px;text-align:center;display:flex;align-items:center;justify-content:center;">15%</div>
+                    <button class="header-btn" style="height:22px;font-size:9px;padding:0 4px;color:var(--red);border-color:rgba(255,77,109,0.3);">×</button>
+                  </div>
+                  <div style="display:grid;grid-template-columns:50px 1fr 60px auto;gap:6px;align-items:center;">
+                    <div class="form-control" style="height:26px;font-size:11px;text-align:center;display:flex;align-items:center;justify-content:center;">5</div>
+                    <div style="height:14px;background:rgba(255,255,255,0.04);border-radius:3px;overflow:hidden;"><div style="height:100%;width:25%;background:#FF8030;border-radius:3px;"></div></div>
+                    <div class="form-control" style="height:26px;font-size:11px;text-align:center;display:flex;align-items:center;justify-content:center;">25%</div>
+                    <button class="header-btn" style="height:22px;font-size:9px;padding:0 4px;color:var(--red);border-color:rgba(255,77,109,0.3);">×</button>
+                  </div>
+                  <div style="display:grid;grid-template-columns:50px 1fr 60px auto;gap:6px;align-items:center;">
+                    <div class="form-control" style="height:26px;font-size:11px;text-align:center;display:flex;align-items:center;justify-content:center;">8</div>
+                    <div style="height:14px;background:rgba(255,255,255,0.04);border-radius:3px;overflow:hidden;"><div style="height:100%;width:30%;background:#F5C842;border-radius:3px;"></div></div>
+                    <div class="form-control" style="height:26px;font-size:11px;text-align:center;display:flex;align-items:center;justify-content:center;">30%</div>
+                    <button class="header-btn" style="height:22px;font-size:9px;padding:0 4px;color:var(--red);border-color:rgba(255,77,109,0.3);">×</button>
+                  </div>
+                  <div style="display:grid;grid-template-columns:50px 1fr 60px auto;gap:6px;align-items:center;">
+                    <div class="form-control" style="height:26px;font-size:11px;text-align:center;display:flex;align-items:center;justify-content:center;">10</div>
+                    <div style="height:14px;background:rgba(255,255,255,0.04);border-radius:3px;overflow:hidden;"><div style="height:100%;width:20%;background:#3DD68C;border-radius:3px;"></div></div>
+                    <div class="form-control" style="height:26px;font-size:11px;text-align:center;display:flex;align-items:center;justify-content:center;">20%</div>
+                    <button class="header-btn" style="height:22px;font-size:9px;padding:0 4px;color:var(--red);border-color:rgba(255,77,109,0.3);">×</button>
+                  </div>
+                </div>
+                <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:10px;">
+                  <span style="color:var(--text3);">共 5 项</span>
+                  <span>总计：<span style="color:var(--green);font-weight:700;">100%</span></span>
+                </div>
+              </div>
+              <!-- 任务配置 -->
+              <div style="font-size:11px;font-weight:700;color:var(--text1);margin-bottom:8px;">获取任务配置</div>
+              <div class="form-grid-2">
+                <div class="form-group"><div class="form-label" style="font-size:10px;">单次完成阈值（元）*</div><div class="form-control" style="display:flex;align-items:center;height:28px;font-size:12px;">30</div><div style="font-size:9px;color:var(--text3);margin-top:2px;">单日累计充值达到此值完成一次</div></div>
+                <div class="form-group"><div class="form-label" style="font-size:10px;">每日上限次数 *</div><div class="form-control" style="display:flex;align-items:center;height:28px;font-size:12px;">3</div><div style="font-size:9px;color:var(--text3);margin-top:2px;">每日 00:00 重置</div></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 重置规则 -->
+          <div class="card"><div class="card-header"><div class="card-title">重置规则</div></div>
+            <div class="card-body">
+              <div class="toggle-row"><div class="toggle-info"><h4>零点自动重置</h4><p>每日 00:00 北京时间（UTC+8）重置任务次数</p></div><div class="toggle on"></div></div>
+            </div>
+          </div>
+
+          <!-- ===== 进度奖励 ===== -->
+          <div class="section-title">进度奖励</div>
+          <div class="card"><div class="card-header"><div><div class="card-title">个人进度里程碑</div><div class="card-desc" style="font-size:11px;color:var(--text3);margin-top:1px;">基于个人累计伤害值触发，每个节点不可重复领取</div></div><div style="margin-left:auto;"><button class="header-btn" style="font-size:11px;">+ 添加节点</button></div></div>
+            <div class="card-body">
+              <div style="display:grid;grid-template-columns:32px 1fr 60px 1fr auto;gap:6px;padding:6px 0;border-bottom:1px solid var(--border);margin-bottom:8px;">
+                <span style="font-size:10px;color:var(--text3);font-weight:600;">节点</span>
+                <span style="font-size:10px;color:var(--text3);font-weight:600;">伤害阈值</span>
+                <span style="font-size:10px;color:var(--text3);font-weight:600;">类型</span>
+                <span style="font-size:10px;color:var(--text3);font-weight:600;">奖励内容</span>
+                <span></span>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:6px;">
+                <!-- 节点1: 电量 -->
+                <div style="display:grid;grid-template-columns:32px 1fr 60px 1fr auto;gap:6px;align-items:center;">
+                  <div style="width:22px;height:22px;border-radius:50%;background:rgba(245,200,66,0.12);border:1px solid rgba(245,200,66,0.3);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:var(--gold);">1</div>
+                  <div class="form-control" style="height:28px;font-size:11px;display:flex;align-items:center;">10</div>
+                  <div style="display:flex;align-items:center;gap:2px;background:rgba(61,214,140,0.1);border:1px solid rgba(61,214,140,0.25);border-radius:5px;padding:3px 6px;cursor:pointer;"><span style="font-size:9px;font-weight:600;color:#3DD68C;">电量</span><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#3DD68C" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></div>
+                  <div style="display:flex;align-items:center;gap:3px;"><div class="form-control" style="height:28px;font-size:11px;display:flex;align-items:center;">500</div><span style="font-size:10px;color:var(--gold);">⚡</span></div>
+                  <button class="header-btn" style="height:22px;font-size:9px;padding:0 5px;color:var(--red);border-color:rgba(255,77,109,0.3);">删除</button>
+                </div>
+                <!-- 节点2: 勋章 -->
+                <div style="display:grid;grid-template-columns:32px 1fr 60px 1fr auto;gap:6px;align-items:start;">
+                  <div style="width:22px;height:22px;border-radius:50%;background:rgba(245,200,66,0.12);border:1px solid rgba(245,200,66,0.3);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:var(--gold);margin-top:4px;">2</div>
+                  <div class="form-control" style="height:28px;font-size:11px;display:flex;align-items:center;margin-top:0;">50</div>
+                  <div style="display:flex;align-items:center;gap:2px;background:rgba(155,92,255,0.12);border:1px solid rgba(155,92,255,0.2);border-radius:5px;padding:3px 6px;cursor:pointer;margin-top:5px;"><span style="font-size:9px;font-weight:600;color:#9B5CFF;">勋章</span><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#9B5CFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></div>
+                  <div style="display:flex;flex-direction:column;gap:4px;">
+                    <div style="display:flex;align-items:center;gap:4px;">
+                      <span style="font-size:9px;color:var(--text3);white-space:nowrap;width:36px;">勋章ID</span>
+                      <div class="form-control" style="height:28px;font-size:11px;display:flex;align-items:center;flex:1;font-family:'JetBrains Mono',monospace;color:var(--accent2);">10021</div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:6px;background:var(--bg3);border:1px solid var(--border);border-radius:5px;padding:4px 8px;">
+                      <div style="width:20px;height:20px;border-radius:3px;background:linear-gradient(135deg,#9B5CFF,#FF2D87);display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0;">🏅</div>
+                      <span style="font-size:10px;color:#C89EFF;font-weight:600;">初级挑战者</span>
+                      <span style="font-size:8px;color:var(--text3);margin-left:auto;">已匹配</span>
+                    </div>
+                  </div>
+                  <button class="header-btn" style="height:22px;font-size:9px;padding:0 5px;color:var(--red);border-color:rgba(255,77,109,0.3);margin-top:2px;">删除</button>
+                </div>
+                <!-- 节点3: 电量 -->
+                <div style="display:grid;grid-template-columns:32px 1fr 60px 1fr auto;gap:6px;align-items:center;">
+                  <div style="width:22px;height:22px;border-radius:50%;background:rgba(245,200,66,0.12);border:1px solid rgba(245,200,66,0.3);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:var(--gold);">3</div>
+                  <div class="form-control" style="height:28px;font-size:11px;display:flex;align-items:center;">100</div>
+                  <div style="display:flex;align-items:center;gap:2px;background:rgba(61,214,140,0.1);border:1px solid rgba(61,214,140,0.25);border-radius:5px;padding:3px 6px;cursor:pointer;"><span style="font-size:9px;font-weight:600;color:#3DD68C;">电量</span><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#3DD68C" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></div>
+                  <div style="display:flex;align-items:center;gap:3px;"><div class="form-control" style="height:28px;font-size:11px;display:flex;align-items:center;">2,000</div><span style="font-size:10px;color:var(--gold);">⚡</span></div>
+                  <button class="header-btn" style="height:22px;font-size:9px;padding:0 5px;color:var(--red);border-color:rgba(255,77,109,0.3);">删除</button>
+                </div>
+                <!-- 节点4: 勋章 -->
+                <div style="display:grid;grid-template-columns:32px 1fr 60px 1fr auto;gap:6px;align-items:start;">
+                  <div style="width:22px;height:22px;border-radius:50%;background:rgba(245,200,66,0.12);border:1px solid rgba(245,200,66,0.3);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:var(--gold);margin-top:4px;">4</div>
+                  <div class="form-control" style="height:28px;font-size:11px;display:flex;align-items:center;margin-top:0;">200</div>
+                  <div style="display:flex;align-items:center;gap:2px;background:rgba(155,92,255,0.12);border:1px solid rgba(155,92,255,0.2);border-radius:5px;padding:3px 6px;cursor:pointer;margin-top:5px;"><span style="font-size:9px;font-weight:600;color:#9B5CFF;">勋章</span><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#9B5CFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></div>
+                  <div style="display:flex;flex-direction:column;gap:4px;">
+                    <div style="display:flex;align-items:center;gap:4px;">
+                      <span style="font-size:9px;color:var(--text3);white-space:nowrap;width:36px;">勋章ID</span>
+                      <div class="form-control" style="height:28px;font-size:11px;display:flex;align-items:center;flex:1;font-family:'JetBrains Mono',monospace;color:var(--accent2);">10035</div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:6px;background:var(--bg3);border:1px solid var(--border);border-radius:5px;padding:4px 8px;">
+                      <div style="width:20px;height:20px;border-radius:3px;background:linear-gradient(135deg,#FFD060,#FF9020);display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0;">👑</div>
+                      <span style="font-size:10px;color:#FFD060;font-weight:600;">魅魔征服者</span>
+                      <span style="font-size:8px;color:var(--text3);margin-left:auto;">已匹配</span>
+                    </div>
+                  </div>
+                  <button class="header-btn" style="height:22px;font-size:9px;padding:0 5px;color:var(--red);border-color:rgba(255,77,109,0.3);margin-top:2px;">删除</button>
+                </div>
+              </div>
+              <div style="width:100%;height:32px;border-radius:6px;border:1px dashed var(--border);background:none;color:var(--text3);font-size:11px;display:flex;align-items:center;justify-content:center;gap:6px;margin-top:10px;cursor:pointer;">＋ 添加里程碑节点</div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+    <div class="split-right">
+      <div class="doc-page-title"><span class="icon">⚙️</span> 后台 · 活动配置</div>
+      <div class="doc-card">
+        <div class="sec-num">8.1 功能概述</div>
+        <p>活动配置是管理后台最核心的页面，包含 Live2D 活动的全部可配置项。分为<strong>基础配置</strong>、<strong>Live2D 配置</strong>、<strong>BOSS 血条管理</strong>、<strong>道具配置</strong>、<strong>进度奖励</strong>五大板块。所有修改保存后实时生效。</p>
+      </div>
+      <div class="doc-card">
+        <div class="sec-num">8.2 活动开关</div>
+        <ul>
+          <li><strong>活动总开关：</strong>关闭后用户无法访问活动 H5 页面（一键暂停/恢复）</li>
+        </ul>
+      </div>
+      <div class="doc-card">
+        <div class="sec-num">8.3 活动基础信息</div>
+        <ul>
+          <li><strong>活动名称：</strong>必填，影响 H5 页标题显示和活动列表的活动名称</li>
+          <li><strong>起止时间：</strong>datetime-local 选择器，所有时间以服务端<strong>北京时间（UTC+8）</strong>为准</li>
+          <li><strong>规则说明：</strong>多行文本域（支持富文本图文），前端按换行分段展示于规则弹窗</li>
+        </ul>
+      </div>
+      <div class="doc-card">
+        <div class="sec-num">8.4 Live2D 形态管理</div>
+        <p>支持多个 BOSS 形态（数量由后台配置），每个形态对应一套独立 Live2D 文件。前端使用 <code>pixi-live2d-display</code> 库渲染（支持 Cubism 4）。每个形态包含：</p>
+        <ul>
+          <li><strong>形态名称和图标：</strong>如 🌟 初始形态、🌸 觉醒形态</li>
+          <li><strong>Live2D 模型上传：</strong>.zip 文件包（含 .model3.json + 贴图素材），建议单形态 ≤ 5MB，接入 CDN 加速</li>
+          <li><strong>背景图上传：</strong>1920×1080 或 750×1624，支持 JPG/PNG/WebP</li>
+          <li><strong>解锁触发：</strong>默认 / HP 降至 75% / 50% / 25%（全服同步解锁）</li>
+        </ul>
+      </div>
+      <div class="doc-card">
+        <div class="sec-num">8.4.1 添加形态表单</div>
+        <p>点击 "＋ 添加形态" 展开表单面板（紫色高亮边框）：</p>
+        <ul>
+          <li><strong>形态名称：</strong>必填，自定义名称如"炽焰形态"</li>
+          <li><strong>Live2D 文件包：</strong>拖拽或点击上传 .zip 文件，包含 .model3.json 及贴图素材</li>
+          <li><strong>形态背景图：</strong>可选上传，未上传时使用默认动态星空背景</li>
+          <li><strong>解锁触发节点：</strong>下拉选择对应血量阈值</li>
+          <li><strong>形态图标：</strong>输入 Emoji 作为形态标识</li>
+        </ul>
+      </div>
+      <div class="doc-card">
+        <div class="sec-num">8.4.2 动作映射配置</div>
+        <p>每个形态需配置动作 ID（必须与 <code>.model3.json</code> 中定义的动作名<strong>完全一致</strong>）：</p>
+        <ul>
+          <li><strong>道具 A 攻击动作：</strong>如 <code>motion_attack_lightning</code></li>
+          <li><strong>道具 B 攻击动作：</strong>如 <code>motion_attack_water</code></li>
+          <li><strong>待机动作（循环）：</strong>如 <code>motion_idle</code>，无交互时持续播放</li>
+          <li><strong>形态切换动作：</strong>切换形态时播放的过渡动画效果</li>
+        </ul>
+      </div>
+      <div class="doc-card">
+        <div class="sec-num">8.5 BOSS 血条管理</div>
+        <ul>
+          <li><strong>总血量：</strong>必填数值，默认 100,000，修改后实时生效</li>
+          <li><strong>当前血量：</strong>可运营<strong>手动干预</strong>（如调整活动节奏），实时生效标记</li>
+          <li><strong>血条预览：</strong>可视化当前血量占比，显示实时百分比</li>
+          <li><strong>形态解锁节点：</strong>由 Live2D 形态管理中各形态的「解锁触发节点」配置控制（见 8.4）</li>
+          <li><strong>归零处理：</strong>血量归零后活动继续运行至结束时间，不提前终止</li>
+        </ul>
+      </div>
+      <div class="doc-card">
+        <div class="sec-num">8.6 道具配置</div>
+        <p>道具命名、伤害范围、触发概率和获取任务合并为<strong>单个道具卡片</strong>统一配置。每个道具独立一张卡片（粉色边框 = 道具 A，蓝色边框 = 道具 B）：</p>
+        <ul>
+          <li><strong>道具名称：</strong>自定义道具显示名称（影响前端 H5 展示）</li>
+          <li><strong>伤害值与触发概率：</strong>以行列表形式自由配置，每行一个伤害值及其触发概率。支持增删改：「+ 添加伤害值」新增行，每行右侧 × 按钮可删除，伤害值和概率均可编辑。每行有概率柱可视化预览</li>
+          <li><strong>独立校验：</strong>每个道具内所有行的触发概率合计必须等于 100%，否则标红警示不可保存</li>
+          <li><strong>获取任务：</strong>配置获取该道具的任务阈值和每日上限次数（道具 A 为消耗任务，道具 B 为充值任务）</li>
+          <li><strong>重置规则：</strong>每日 00:00 UTC+8 自动重置任务进度和次数，已持有道具不重置</li>
+          <li><strong>设计意图：</strong>允许运营为不同获取难度的道具配置差异化的伤害分布（如充值道具伤害更高），丰富策略玩法</li>
+        </ul>
+        <p>后端使用 Redis 原子操作确保血量扣减原子性，防并发超扣。消耗数据实时同步（非 T+1），充值以支付成功为准。</p>
+      </div>
+      <div class="doc-card">
+        <div class="sec-num">8.7 个人进度里程碑</div>
+        <p>可增删里程碑节点，每个节点配置：</p>
+        <ul>
+          <li><strong>累计伤害阈值：</strong>数字输入（基于个人对全服血条的总伤害）</li>
+          <li><strong>奖励类型：</strong>下拉选择 <span class="tag-inline tag-gold">电量</span> 或 <span class="tag-inline tag-purple">勋章</span></li>
+          <li><strong>电量奖励：</strong>数字输入奖励电量值（即时到账）</li>
+          <li><strong>勋章奖励：</strong>输入勋章 ID（数字），系统自动匹配并回显勋章预览图和勋章昵称，匹配成功后显示 "已匹配" 状态</li>
+          <li>每个节点<strong>不可重复领取</strong>（后端幂等校验）</li>
+          <li>活动结束后已达标未领取的奖励<strong>自动发放</strong></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+<div class="tc-wrap">
+  <div class="tc-bar">
+    <span class="tc-arrow">▶</span>
+    <div class="tc-title">📝 测试用例</div>
+    <span class="tc-count">31 条</span>
+  </div>
+  <div class="tc-body">
+    <table class="tc-table">
+      <thead><tr><th>编号</th><th>优先级</th><th>测试场景</th><th>前置条件</th><th>操作步骤</th><th>预期结果</th><th>状态</th></tr></thead>
+      <tbody>
+        <tr><td class="tc-id">TC-AC-01</td><td class="tc-p0">P0</td><td>活动总开关关闭</td><td>活动配置页</td><td>关闭活动总开关</td><td>用户无法访问活动 H5 页面</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-AC-02</td><td class="tc-p0">P0</td><td>活动名称修改生效</td><td>修改活动名称</td><td>保存并查看 H5 页面</td><td>H5 标题和活动列表名称同步更新</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-AC-03</td><td class="tc-p0">P0</td><td>血量手动干预</td><td>活动配置页</td><td>修改当前血量</td><td>前端血条实时更新</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-AC-04</td><td class="tc-p0">P0</td><td>道具 A 伤害概率修改</td><td>修改道具 A 伤害权重</td><td>确认道具 A 总概率 = 100%</td><td>道具 A 柱状图实时更新，保存成功</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-AC-05</td><td class="tc-p1">P1</td><td>单道具概率总和校验</td><td>修改道具 A 概率使总和 ≠ 100%</td><td>观察道具 A 区块提示</td><td>道具 A 区块标红警示，不影响道具 B</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-AC-06</td><td class="tc-p0">P0</td><td>添加 Live2D 形态</td><td>形态管理</td><td>点击「+ 添加形态」填写表单</td><td>新形态添加成功，列表更新</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-AC-07</td><td class="tc-p0">P0</td><td>动作映射配置</td><td>某个形态</td><td>点击「动作映射」</td><td>展开动作 ID 配置面板</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-AC-08</td><td class="tc-p0">P0</td><td>任务阈值修改</td><td>任务配置</td><td>修改消耗任务阈值</td><td>前端任务描述同步更新</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-AC-09</td><td class="tc-p0">P0</td><td>里程碑增删</td><td>里程碑配置</td><td>添加/删除节点</td><td>列表正确更新，不影响已领取节点</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-AC-10</td><td class="tc-p0">P0</td><td>勋章 ID 匹配</td><td>里程碑-勋章类型</td><td>输入勋章 ID</td><td>自动回显勋章预览图和昵称</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-AC-11</td><td class="tc-p0">P0</td><td>道具 A 全部设为 0% 校验</td><td>道具 A 伤害配置</td><td>将道具 A 所有伤害段概率设为 0%</td><td>道具 A 总和为 0%，标红警示，不可保存</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-AC-12</td><td class="tc-p0">P0</td><td>道具 A 单段 100% 其余 0%</td><td>道具 A 伤害配置</td><td>设置 1-3pt 为 100%，其余为 0%</td><td>道具 A 总和 100%，使用道具 A 攻击仅产生 1-3 点</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-AC-13</td><td class="tc-p1">P1</td><td>概率输入负数校验</td><td>道具 A 或 B 伤害配置</td><td>某段概率输入 -10%</td><td>输入校验拦截，不允许负数</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-AC-14</td><td class="tc-p1">P1</td><td>概率-输入超 100% 校验</td><td>伤害配置</td><td>某段概率输入 150%</td><td>输入校验拦截或总和标红</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-AC-15</td><td class="tc-p1">P1</td><td>概率-输入小数</td><td>伤害配置</td><td>设置 1-3pt 为 33.3%，4-5pt 为 33.3%，6-7pt 为 33.4%</td><td>总和 100%，保存成功，小数概率正常生效</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-AC-16</td><td class="tc-p0">P0</td><td>道具 A/B 伤害独立验证</td><td>道具 A 设 10pt=100%，道具 B 设 1-3pt=100%</td><td>分别使用道具 A 和 B 攻击</td><td>道具 A 均产生 10 点伤害，道具 B 均产生 1-3 点伤害，互不影响</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-AC-17</td><td class="tc-p0">P0</td><td>活动时间-正常设置</td><td>活动配置页</td><td>设置开始时间 &lt; 结束时间</td><td>保存成功，H5 页面倒计时正常显示</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-AC-18</td><td class="tc-p0">P0</td><td>活动时间-开始 &gt; 结束校验</td><td>活动配置页</td><td>设置开始时间晚于结束时间</td><td>校验拦截，提示时间设置错误，不可保存</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-AC-19</td><td class="tc-p0">P0</td><td>活动时间-活动未开始展示</td><td>开始时间设为未来</td><td>用户访问活动页</td><td>展示倒计时页面，隐藏攻击功能</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-AC-20</td><td class="tc-p0">P0</td><td>活动时间-活动已结束展示</td><td>结束时间已过</td><td>用户访问活动页</td><td>展示活动结束页，保留进度奖励入口</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-AC-21</td><td class="tc-p1">P1</td><td>活动时间-修改时间立即生效</td><td>活动进行中</td><td>修改结束时间为已过去的时间</td><td>活动立即结束，前端展示结束页</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-AC-22</td><td class="tc-p1">P1</td><td>活动时间-时区一致性</td><td>活动配置页</td><td>设置时间并在不同时区设备查看</td><td>所有时间均以 UTC+8 北京时间为准</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-AC-23</td><td class="tc-p0">P0</td><td>血量输入 0</td><td>血条管理</td><td>设置总血量为 0</td><td>校验拦截，总血量必须大于 0</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-AC-24</td><td class="tc-p1">P1</td><td>血量输入负数</td><td>血条管理</td><td>设置当前血量为 -100</td><td>校验拦截，不允许负数</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-AC-25</td><td class="tc-p0">P0</td><td>当前血量 > 总血量校验</td><td>血条管理</td><td>设置当前血量大于总血量</td><td>校验拦截或自动修正为总血量值</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-AC-26</td><td class="tc-p0">P0</td><td>活动名称为空校验</td><td>活动基础信息</td><td>清空活动名称并保存</td><td>必填校验拦截，提示活动名称不能为空</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-AC-27</td><td class="tc-p1">P1</td><td>Live2D 上传非 zip 文件</td><td>添加形态</td><td>上传 .jpg 文件作为 Live2D 包</td><td>校验拦截，提示仅支持 .zip 文件包</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-AC-28</td><td class="tc-p1">P1</td><td>重复里程碑阈值</td><td>里程碑配置</td><td>添加两个阈值相同的节点（如都是 100）</td><td>校验拦截或警告，不允许重复阈值</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-AC-29</td><td class="tc-p0">P0</td><td>勋章 ID 不存在</td><td>里程碑-勋章类型</td><td>输入不存在的勋章 ID</td><td>提示「勋章 ID 不存在」，不显示回显信息</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-AC-30</td><td class="tc-p1">P1</td><td>任务阈值设为 0</td><td>任务配置</td><td>消耗任务阈值输入 0</td><td>校验拦截，阈值必须大于 0</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-AC-31</td><td class="tc-p0">P0</td><td>道具 B 伤害概率独立修改</td><td>修改道具 B 伤害权重</td><td>仅修改道具 B 概率，不动道具 A</td><td>道具 B 柱状图更新，道具 A 配置不受影响</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+</div>
+
+<!-- ====== TAB: H5·Banner入口 ====== -->
+<div class="tab-page active" id="page-bannerEntry">
+  <div class="split-layout">
+    <div class="split-left">
+      <div class="phone-preview">
+        <div style="width:100%;height:100%;background:#0A0A12;display:flex;flex-direction:column;font-family:'Noto Sans SC',sans-serif;overflow:hidden;position:relative;">
+          <!-- 状态栏 -->
+          <div style="height:24px;background:#0A0A12;display:flex;align-items:center;justify-content:flex-end;padding:0 12px;gap:4px;font-size:9px;color:rgba(255,255,255,0.4);flex-shrink:0;">
+            <span>4G</span><span>📶</span><span>🔋 82%</span>
+          </div>
+          <!-- 顶部导航 -->
+          <div style="display:flex;align-items:center;padding:6px 14px;gap:14px;flex-shrink:0;">
+            <span style="font-size:13px;color:rgba(255,255,255,0.4);">榜单</span>
+            <span style="font-size:14px;font-weight:800;color:#FF2D87;">最热</span>
+            <span style="font-size:13px;color:rgba(255,255,255,0.4);">最新</span>
+            <span style="font-size:13px;color:rgba(255,255,255,0.4);">关注</span>
+            <div style="margin-left:auto;display:flex;align-items:center;gap:10px;">
+              <div style="display:flex;align-items:center;gap:4px;font-size:10px;color:rgba(255,255,255,0.35);"><span style="width:28px;height:16px;background:rgba(255,255,255,0.1);border-radius:8px;display:inline-block;"></span>NSFW</div>
+              <span style="font-size:14px;color:rgba(255,255,255,0.4);">🔍</span>
+              <span style="font-size:14px;color:rgba(255,255,255,0.4);">👤</span>
+            </div>
+          </div>
+          <!-- 筛选栏 -->
+          <div style="display:flex;align-items:center;padding:4px 14px 8px;gap:8px;flex-shrink:0;">
+            <div style="font-size:11px;color:rgba(255,255,255,0.4);display:flex;align-items:center;gap:3px;">☰ 筛选</div>
+            <div style="margin-left:auto;font-size:11px;color:rgba(255,255,255,0.4);display:flex;align-items:center;gap:3px;">⇅ 最热 ☰</div>
+          </div>
+          <!-- Banner 轮播区 -->
+          <div style="padding:0 12px;margin-bottom:10px;flex-shrink:0;position:relative;">
+            <!-- 全局红点角标：固定在轮播容器右上角，不随轮播切换消失 -->
+            <div style="position:absolute;top:-4px;right:8px;z-index:10;display:flex;align-items:center;gap:0;">
+              <div style="background:#FF2D87;color:white;font-size:9px;font-weight:800;padding:2px 8px 2px 7px;border-radius:4px 0 0 4px;line-height:1.3;letter-spacing:0.3px;box-shadow:0 2px 8px rgba(255,45,135,0.5);animation:badgePulse 2s ease-in-out infinite;">可领取</div>
+              <div style="width:0;height:0;border-left:6px solid #FF2D87;border-top:4px solid transparent;border-bottom:4px solid transparent;filter:drop-shadow(2px 0 4px rgba(255,45,135,0.3));"></div>
+            </div>
+            <style>@keyframes badgePulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:0.85;transform:scale(1.04);}}</style>
+            <div style="position:relative;background:linear-gradient(135deg,#1A1225,#1E0E1E);border:2px solid #FF2D87;border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:12px;box-shadow:0 0 20px rgba(255,45,135,0.2),inset 0 0 15px rgba(255,45,135,0.05);overflow:hidden;">
+              <!-- 滑动指示点 -->
+              <div style="position:absolute;bottom:4px;left:50%;transform:translateX(-50%);display:flex;gap:4px;">
+                <div style="width:12px;height:3px;border-radius:2px;background:#FF2D87;"></div>
+                <div style="width:6px;height:3px;border-radius:2px;background:rgba(255,255,255,0.2);"></div>
+                <div style="width:6px;height:3px;border-radius:2px;background:rgba(255,255,255,0.2);"></div>
+              </div>
+              <!-- Logo -->
+              <div style="width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#FF6B35,#FFB347);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px;font-weight:900;color:white;box-shadow:0 2px 8px rgba(255,107,53,0.4);">M</div>
+              <!-- 文案 -->
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:14px;font-weight:800;color:#F0E8FF;line-height:1.3;">限时狂欢！消耗电量领豪礼</div>
+              </div>
+              <!-- 领取按钮+倒计时 -->
+              <div style="flex-shrink:0;text-align:center;">
+                <div style="background:linear-gradient(135deg,#FF2D87,#9B5CFF);border-radius:8px;padding:4px 12px;font-size:11px;font-weight:700;color:white;white-space:nowrap;">领取电量</div>
+                <div style="font-size:10px;color:rgba(240,232,255,0.5);margin-top:3px;font-family:'JetBrains Mono',monospace;letter-spacing:0.5px;">23:45:12</div>
+              </div>
+            </div>
+          </div>
+          <!-- 内容卡片区 (scrollable) -->
+          <div style="flex:1;overflow:auto;padding:0 12px;">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+              <!-- Card 1 -->
+              <div style="border-radius:10px;overflow:hidden;background:#161622;">
+                <div style="height:160px;background:linear-gradient(180deg,#2A1A3A,#1A0E2A);position:relative;display:flex;align-items:center;justify-content:center;">
+                  <div style="font-size:48px;opacity:0.15;">📖</div>
+                  <div style="position:absolute;top:8px;right:8px;background:rgba(255,45,135,0.8);border-radius:4px;padding:1px 6px;font-size:9px;color:white;font-weight:600;">原创</div>
+                  <div style="position:absolute;bottom:6px;left:8px;font-size:9px;color:rgba(255,255,255,0.5);">👁 2.81M</div>
+                  <div style="position:absolute;bottom:6px;right:8px;font-size:9px;color:rgba(255,255,255,0.5);">Emilie</div>
+                </div>
+                <div style="padding:8px 10px;">
+                  <div style="font-size:12px;font-weight:700;color:#F0E8FF;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">这一次，我只想抱住她，告诉她「爸爸爱你」</div>
+                  <div style="font-size:9px;color:rgba(240,232,255,0.3);margin-top:4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">「教陪」当一个饱受中式教育压迫的孩子踏上天台…</div>
+                  <div style="margin-top:6px;display:flex;align-items:center;gap:6px;">
+                    <span style="font-size:9px;color:rgba(240,232,255,0.4);border:1px solid rgba(255,255,255,0.1);border-radius:3px;padding:0 4px;">SFW</span>
+                  </div>
+                  <div style="font-size:9px;color:rgba(240,232,255,0.25);margin-top:4px;">暂无评分</div>
+                </div>
+              </div>
+              <!-- Card 2 -->
+              <div style="border-radius:10px;overflow:hidden;background:#161622;">
+                <div style="height:160px;background:linear-gradient(180deg,#3A2A1A,#2A1A0E);position:relative;display:flex;align-items:center;justify-content:center;">
+                  <div style="font-size:48px;opacity:0.15;">📚</div>
+                  <div style="position:absolute;top:8px;right:8px;background:rgba(255,45,135,0.8);border-radius:4px;padding:1px 6px;font-size:9px;color:white;font-weight:600;">原创</div>
+                  <div style="position:absolute;bottom:6px;left:8px;font-size:9px;color:rgba(255,255,255,0.5);">👁 2.07M</div>
+                  <div style="position:absolute;bottom:6px;right:8px;font-size:9px;color:rgba(255,255,255,0.5);">林雨</div>
+                </div>
+                <div style="padding:8px 10px;">
+                  <div style="font-size:12px;font-weight:700;color:#F0E8FF;line-height:1.4;">霸总攻略</div>
+                  <div style="font-size:9px;color:rgba(240,232,255,0.3);margin-top:4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">家里要破产了，还有个多金未婚夫，快去拿下</div>
+                  <div style="margin-top:6px;display:flex;align-items:center;gap:6px;">
+                    <span style="font-size:9px;color:rgba(240,232,255,0.4);border:1px solid rgba(255,255,255,0.1);border-radius:3px;padding:0 4px;">SFW</span>
+                  </div>
+                  <div style="font-size:9px;color:rgba(240,232,255,0.25);margin-top:4px;">暂无评分</div>
+                </div>
+              </div>
+              <!-- Card 3 (partial) -->
+              <div style="border-radius:10px;overflow:hidden;background:#161622;">
+                <div style="height:100px;background:linear-gradient(180deg,#1A2A3A,#0E1A2A);display:flex;align-items:center;justify-content:center;">
+                  <div style="font-size:36px;opacity:0.15;">🎨</div>
+                </div>
+              </div>
+              <div style="border-radius:10px;overflow:hidden;background:#161622;">
+                <div style="height:100px;background:linear-gradient(180deg,#3A1A1A,#2A0E0E);display:flex;align-items:center;justify-content:center;">
+                  <div style="font-size:36px;opacity:0.15;">🖼️</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- 底部导航 -->
+          <div style="height:52px;background:#0D0D18;border-top:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:space-around;flex-shrink:0;">
+            <div style="text-align:center;position:relative;">
+              <div style="font-size:18px;">🏠</div>
+              <div style="font-size:9px;color:#FF2D87;font-weight:600;">首页</div>
+              <!-- 红点 -->
+              <div style="position:absolute;top:-2px;right:-4px;width:7px;height:7px;border-radius:50%;background:#FF2D87;box-shadow:0 0 6px rgba(255,45,135,0.6);"></div>
+            </div>
+            <div style="text-align:center;"><div style="font-size:18px;opacity:0.4;">💬</div><div style="font-size:9px;color:rgba(255,255,255,0.3);">聊天</div></div>
+            <div style="text-align:center;position:relative;"><div style="font-size:18px;opacity:0.4;">📦</div><div style="font-size:9px;color:rgba(255,255,255,0.3);">领电量</div>
+              <div style="position:absolute;top:-2px;right:-6px;width:7px;height:7px;border-radius:50%;background:#FF2D87;box-shadow:0 0 6px rgba(255,45,135,0.6);"></div>
+            </div>
+            <div style="text-align:center;"><div style="font-size:18px;opacity:0.4;">👤</div><div style="font-size:9px;color:rgba(255,255,255,0.3);">我的</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="split-right">
+      <div class="doc-page-title"><span class="icon">📱</span> H5 Banner 入口</div>
+      <div class="doc-card">
+        <div class="sec-num">9.1 功能概述</div>
+        <p>Banner 入口展示在平台首页内容流顶部（筛选栏下方），用户无需进入活动页即可看到活动 Banner。Banner 支持<strong>左右滑动轮播</strong>，点击后跳转至对应活动 H5 页面。</p>
+      </div>
+      <div class="doc-card">
+        <div class="sec-num">9.2 Banner 样式</div>
+        <ul>
+          <li><strong>容器：</strong>圆角卡片（14px），粉色描边（2px #FF2D87），内部深色渐变背景，带粉色 box-shadow 发光</li>
+          <li><strong>左侧 Logo：</strong>44×44 圆角图标，平台品牌色渐变（橙→金），展示平台 Logo</li>
+          <li><strong>中间文案：</strong>粗体白色活动标题，如 "限时狂欢！消耗电量领豪礼"</li>
+          <li><strong>右侧按钮：</strong>粉紫渐变胶囊按钮，文案 "可领取" / "领取电量"，下方灰色小字展示倒计时</li>
+        </ul>
+      </div>
+      <div class="doc-card">
+        <div class="sec-num">9.3 轮播滑动</div>
+        <ul>
+          <li><strong>滑动方式：</strong>手指左右滑动切换 Banner，支持触摸滑动和自动轮播</li>
+          <li><strong>指示器：</strong>底部居中圆点指示器，当前页为粉色长条（12px），其他为灰色圆点（6px）</li>
+          <li><strong>自动轮播：</strong>间隔由后台配置（默认 5s），用户手动滑动后暂停 10s 再恢复</li>
+          <li><strong>单条 Banner：</strong>不显示指示器，不启用滑动</li>
+        </ul>
+      </div>
+      <div class="doc-card">
+        <div class="sec-num">9.4 红点提醒</div>
+        <p>红点采用<strong>容器级角标</strong>设计，固定在 Banner 轮播容器的右上角外侧，不随轮播内容切换而消失：</p>
+        <ul>
+          <li><strong>角标样式：</strong>粉色背景 "可领取" 文字角标（非圆点），右侧带三角箭头指向 Banner，附带呼吸脉冲动画（<code>badgePulse</code>，2s 周期），确保用户注意到</li>
+          <li><strong>显示层级：</strong>角标 <code>z-index: 10</code>，悬浮于 Banner 容器之上，不受 <code>overflow:hidden</code> 裁切</li>
+          <li><strong>始终可见：</strong>无论当前轮播展示的是哪一条 Banner，只要任意活动有可领取奖励，角标始终显示</li>
+          <li><strong>首页图标红点：</strong>同时底部导航栏 "首页" 图标也显示红点（7px 粉色圆点），提示用户有待领取内容</li>
+          <li><strong>消除条件：</strong>用户领取所有可领取的任务奖励和进度奖励后，角标和首页红点同时消失</li>
+        </ul>
+      </div>
+      <div class="doc-card">
+        <div class="sec-num">9.5 点击跳转</div>
+        <p>点击 Banner 任意区域跳转至对应活动 H5 页面（进入加载页 → 主战场）。跳转活动 ID 由后台 Banner 配置决定。</p>
+      </div>
+      <div class="doc-card">
+        <div class="sec-num">9.6 倒计时与展示模式</div>
+        <p>Banner 的展示模式由后台<strong>活动倒计时开关</strong>控制（每条 Banner 独立配置）：</p>
+        <ul>
+          <li><strong>开启倒计时：</strong>Banner 右侧显示领取按钮（"领取电量"渐变胶囊）+ HH:MM:SS 倒计时，每秒刷新</li>
+          <li><strong>关闭倒计时：</strong>Banner 仅展示图片，不显示按钮和倒计时，适合纯展示运营位</li>
+          <li><strong>活动结束：</strong>Banner 自动隐藏；活动未开始时倒计时位置显示 "即将开始"</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+<div class="tc-wrap">
+  <div class="tc-bar">
+    <span class="tc-arrow">▶</span>
+    <div class="tc-title">📝 测试用例</div>
+    <span class="tc-count">14 条</span>
+  </div>
+  <div class="tc-body">
+    <table class="tc-table">
+      <thead><tr><th>编号</th><th>优先级</th><th>测试场景</th><th>前置条件</th><th>操作步骤</th><th>预期结果</th><th>状态</th></tr></thead>
+      <tbody>
+        <tr><td class="tc-id">TC-BN-01</td><td class="tc-p0">P0</td><td>Banner 正常展示</td><td>活动启用且总开关开启</td><td>进入首页信息流</td><td>Banner 卡片展示在筛选栏下方</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-BN-02</td><td class="tc-p0">P0</td><td>可领取角标显示</td><td>用户有可领取奖励</td><td>观察 Banner 容器</td><td>右上角显示粉色「可领取」角标+脉冲动画</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-BN-03</td><td class="tc-p0">P0</td><td>首页红点同步</td><td>有可领取奖励</td><td>观察底部导航栏</td><td>首页图标显示红点</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-BN-04</td><td class="tc-p0">P0</td><td>点击跳转活动页</td><td>Banner 正常展示</td><td>点击 Banner 区域</td><td>跳转至对应活动 H5 页面</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-BN-05</td><td class="tc-p0">P0</td><td>轮播滑动切换</td><td>有多条 Banner</td><td>左右滑动</td><td>切换 Banner，指示器跟随更新</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-BN-06</td><td class="tc-p1">P1</td><td>角标始终可见</td><td>多条 Banner，当前非可领取</td><td>观察角标</td><td>角标固定在容器外，不随轮播消失</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-BN-07</td><td class="tc-p0">P0</td><td>倒计时开启展示</td><td>后台开启倒计时</td><td>观察 Banner</td><td>右侧显示领取按钮和倒计时</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-BN-08</td><td class="tc-p1">P1</td><td>倒计时关闭展示</td><td>后台关闭倒计时</td><td>观察 Banner</td><td>仅显示 Banner 图片</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-BN-09</td><td class="tc-p0">P0</td><td>活动结束自动隐藏</td><td>活动已结束</td><td>进入首页</td><td>该活动 Banner 不再展示</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-BN-10</td><td class="tc-p1">P1</td><td>红点消除</td><td>领取所有可领取奖励</td><td>返回首页</td><td>角标和首页红点同时消失</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-BN-12</td><td class="tc-p1">P1</td><td>无任何活动 Banner</td><td>所有 Banner 均关闭/无配置</td><td>进入首页信息流</td><td>Banner 区域不展示，不留空白间距</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-BN-13</td><td class="tc-p1">P1</td><td>弱网 Banner 加载</td><td>2G/弱网络环境</td><td>进入首页</td><td>Banner 加载可能较慢，显示 loading 态或骨架屏</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-BN-14</td><td class="tc-p0">P0</td><td>活动未开始时 Banner 展示</td><td>活动开始时间为未来</td><td>进入首页</td><td>Banner 正常展示，倒计时显示「即将开始」</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-BN-15</td><td class="tc-p1">P1</td><td>多次快速点击 Banner</td><td>Banner 正常展示</td><td>连续快速点击 Banner</td><td>仅触发一次跳转，不重复打开页面</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+</div>
+
+<!-- ====== TAB: 后台·用户管理 ====== -->
+<div class="tab-page" id="page-adUserMgr">
+  <div class="split-layout">
+    <div class="split-left" style="width:620px;background:#F7F8FA;">
+      <div style="width:100%;height:100%;overflow:auto;font-family:'Noto Sans SC',sans-serif;color:#333;">
+        <!-- 顶栏 -->
+        <div style="background:white;border-bottom:1px solid #E8E8E8;padding:14px 20px;display:flex;align-items:center;gap:12px;">
+          <div style="font-size:15px;font-weight:700;color:#1A1A2E;">用户活动数据管理</div>
+          <div style="margin-left:auto;display:flex;align-items:center;gap:8px;font-size:12px;color:#666;">
+            当前用户：<span style="background:#EBF5FF;color:#2B7DE9;padding:2px 10px;border-radius:4px;font-size:11px;">user_9527@example.com</span>
+            <span style="color:#999;">UID: 8848123</span>
+          </div>
+          <div style="font-size:18px;color:#999;cursor:pointer;">×</div>
+        </div>
+        <div style="display:flex;height:calc(100% - 52px);">
+          <!-- 左侧活动列表 -->
+          <div style="width:180px;background:white;border-right:1px solid #E8E8E8;padding:10px 0;flex-shrink:0;overflow-y:auto;">
+            <div style="padding:10px 14px;border-left:3px solid transparent;cursor:pointer;">
+              <div style="font-size:12px;font-weight:600;color:#666;">新人首充好礼</div>
+              <div style="display:flex;align-items:center;gap:4px;margin-top:3px;">
+                <span style="font-size:10px;color:#999;">ID: 1001</span>
+                <span style="font-size:9px;background:#F0F0F0;color:#999;padding:1px 6px;border-radius:3px;">禁用</span>
+              </div>
+            </div>
+            <div style="padding:10px 14px;border-left:3px solid #2B7DE9;background:#F0F7FF;cursor:pointer;">
+              <div style="font-size:12px;font-weight:700;color:#2B7DE9;">魅魔来袭，召唤挑战</div>
+              <div style="display:flex;align-items:center;gap:4px;margin-top:3px;">
+                <span style="font-size:10px;color:#999;">ID: 1002</span>
+                <span style="font-size:9px;background:#E8F8EF;color:#34C759;padding:1px 6px;border-radius:3px;display:flex;align-items:center;gap:2px;"><span style="width:4px;height:4px;background:#34C759;border-radius:50%;"></span>启用</span>
+              </div>
+            </div>
+            <div style="padding:10px 14px;border-left:3px solid transparent;cursor:pointer;">
+              <div style="font-size:12px;font-weight:600;color:#666;">周末狂欢派对</div>
+              <div style="display:flex;align-items:center;gap:4px;margin-top:3px;">
+                <span style="font-size:10px;color:#999;">ID: 1003</span>
+                <span style="font-size:9px;background:#F0F0F0;color:#999;padding:1px 6px;border-radius:3px;">禁用</span>
+              </div>
+            </div>
+          </div>
+          <!-- 右侧内容 -->
+          <div style="flex:1;overflow-y:auto;padding:20px;">
+            <!-- 累计伤害总览 -->
+            <div style="background:white;border-radius:10px;padding:20px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+              <div style="font-size:11px;color:#999;display:flex;align-items:center;gap:4px;">⚡ 活动期间累计伤害</div>
+              <div style="font-size:36px;font-weight:900;color:#1A1A2E;margin-top:4px;font-family:'JetBrains Mono',monospace;">1,920<span style="font-size:14px;font-weight:500;color:#999;margin-left:6px;">点伤害</span></div>
+            </div>
+            <!-- 里程碑奖励进度 -->
+            <div style="background:white;border-radius:10px;padding:20px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+              <div style="font-size:13px;font-weight:700;color:#1A1A2E;margin-bottom:14px;">里程碑奖励进度</div>
+              <!-- 表头 -->
+              <div style="display:grid;grid-template-columns:80px 1fr 1fr 1fr;gap:8px;padding-bottom:8px;border-bottom:1px solid #E8E8E8;margin-bottom:8px;">
+                <div style="font-size:10px;color:#999;font-weight:600;">伤害阈值</div>
+                <div style="font-size:10px;color:#999;font-weight:600;">奖励内容</div>
+                <div style="font-size:10px;color:#999;font-weight:600;">状态</div>
+                <div style="font-size:10px;color:#999;font-weight:600;">操作</div>
+              </div>
+              <!-- Row 1: 已领取 -->
+              <div style="display:grid;grid-template-columns:80px 1fr 1fr 1fr;gap:8px;align-items:center;padding:10px 0;border-bottom:1px solid #F5F5F5;">
+                <div style="display:flex;flex-direction:column;"><span style="font-size:18px;font-weight:800;color:#1A1A2E;font-family:'JetBrains Mono',monospace;">500</span><span style="font-size:9px;color:#999;">⚡ 伤害</span></div>
+                <div style="display:flex;gap:6px;">
+                  <div style="background:#FFF8E1;border-radius:6px;padding:8px 12px;flex:1;text-align:center;"><div style="font-size:12px;font-weight:700;color:#FF9800;">⚡ 50 电量</div><div style="font-size:9px;color:#34C759;margin-top:2px;">✅ 已领取</div></div>
+                  <div style="background:#FFF8E1;border-radius:6px;padding:8px 12px;flex:1;text-align:center;"><div style="font-size:12px;font-weight:700;color:#FF9800;">⚡ 50 电量</div><div style="font-size:9px;color:#34C759;margin-top:2px;">✅ 已领取</div></div>
+                </div>
+                <div><span style="font-size:10px;background:#E8F8EF;color:#34C759;padding:2px 8px;border-radius:4px;font-weight:600;">已完成</span></div>
+                <div><button style="font-size:10px;background:#FFF3F3;color:#FF4D6D;border:1px solid #FFD4D4;border-radius:4px;padding:3px 10px;cursor:pointer;">锁定奖励</button></div>
+              </div>
+              <!-- Row 2: 待领取 -->
+              <div style="display:grid;grid-template-columns:80px 1fr 1fr 1fr;gap:8px;align-items:center;padding:10px 0;border-bottom:1px solid #F5F5F5;">
+                <div style="display:flex;flex-direction:column;"><span style="font-size:18px;font-weight:800;color:#1A1A2E;font-family:'JetBrains Mono',monospace;">1,000</span><span style="font-size:9px;color:#999;">⚡ 伤害</span></div>
+                <div style="display:flex;gap:6px;">
+                  <div style="background:#FFF8E1;border:1px solid #FFE082;border-radius:6px;padding:8px 12px;flex:1;text-align:center;"><div style="font-size:12px;font-weight:700;color:#FF9800;">⚡ 100 电量</div><div style="font-size:9px;color:#FF9800;margin-top:2px;">🎁 待领取</div></div>
+                  <div style="background:#FFF8E1;border:1px solid #FFE082;border-radius:6px;padding:8px 12px;flex:1;text-align:center;"><div style="font-size:12px;font-weight:700;color:#FF9800;">⚡ 100 电量</div><div style="font-size:9px;color:#FF9800;margin-top:2px;">🎁 待领取</div></div>
+                </div>
+                <div><span style="font-size:10px;background:#FFF3E0;color:#FF9800;padding:2px 8px;border-radius:4px;font-weight:600;">待领取</span></div>
+                <div><button style="font-size:10px;background:#FFF3F3;color:#FF4D6D;border:1px solid #FFD4D4;border-radius:4px;padding:3px 10px;cursor:pointer;">锁定奖励</button></div>
+              </div>
+              <!-- Row 3: 未达标 -->
+              <div style="display:grid;grid-template-columns:80px 1fr 1fr 1fr;gap:8px;align-items:center;padding:10px 0;border-bottom:1px solid #F5F5F5;">
+                <div style="display:flex;flex-direction:column;"><span style="font-size:18px;font-weight:800;color:#CCC;font-family:'JetBrains Mono',monospace;">2,000</span><span style="font-size:9px;color:#CCC;">⚡ 目标</span></div>
+                <div style="display:flex;gap:6px;">
+                  <div style="background:#F8F8F8;border-radius:6px;padding:8px 12px;flex:1;text-align:center;"><div style="font-size:11px;color:#BBB;">未达标</div><div style="font-size:9px;color:#CCC;margin-top:2px;">200 电量</div></div>
+                  <div style="background:#F8F8F8;border-radius:6px;padding:8px 12px;flex:1;text-align:center;"><div style="font-size:11px;color:#BBB;">未达标</div><div style="font-size:9px;color:#CCC;margin-top:2px;">200 电量</div></div>
+                </div>
+                <div><span style="font-size:10px;background:#F5F5F5;color:#BBB;padding:2px 8px;border-radius:4px;">未达标</span></div>
+                <div><button style="font-size:10px;background:#EBF5FF;color:#2B7DE9;border:1px solid #B8DAFF;border-radius:4px;padding:3px 10px;cursor:pointer;">手动解锁</button></div>
+              </div>
+              <!-- Row 4: 勋章行 -->
+              <div style="display:grid;grid-template-columns:80px 1fr 1fr 1fr;gap:8px;align-items:center;padding:10px 0;">
+                <div style="display:flex;flex-direction:column;"><span style="font-size:18px;font-weight:800;color:#CCC;font-family:'JetBrains Mono',monospace;">5,000</span><span style="font-size:9px;color:#CCC;">⚡ 目标</span></div>
+                <div style="display:flex;gap:6px;">
+                  <div style="background:#F8F8F8;border-radius:6px;padding:8px 12px;flex:1;text-align:center;display:flex;align-items:center;justify-content:center;gap:6px;">
+                    <div style="width:24px;height:24px;border-radius:4px;background:linear-gradient(135deg,#ddd,#bbb);display:flex;align-items:center;justify-content:center;font-size:14px;">🏅</div>
+                    <div><div style="font-size:10px;color:#BBB;font-weight:600;">未解锁</div><div style="font-size:8px;color:#CCC;">勋章: 魅魔征服者</div></div>
+                  </div>
+                </div>
+                <div><span style="font-size:10px;background:#F5F5F5;color:#BBB;padding:2px 8px;border-radius:4px;">未达标</span></div>
+                <div><button style="font-size:10px;background:#EBF5FF;color:#2B7DE9;border:1px solid #B8DAFF;border-radius:4px;padding:3px 10px;cursor:pointer;">手动解锁</button></div>
+              </div>
+            </div>
+
+            <!-- 道具管理 -->
+            <div style="background:white;border-radius:10px;padding:20px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+              <div style="font-size:13px;font-weight:700;color:#1A1A2E;margin-bottom:14px;">道具管理</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+                <!-- 道具 A：默认展示态 -->
+                <div style="background:#F7F8FA;border:1px solid #E8E8E8;border-radius:8px;padding:14px;">
+                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+                    <div style="width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,#FFE0EC,#FFB3D0);display:flex;align-items:center;justify-content:center;font-size:18px;">⚡</div>
+                    <div>
+                      <div style="font-size:12px;font-weight:700;color:#1A1A2E;">道具 A（闪电符文）</div>
+                      <div style="font-size:10px;color:#999;">消耗任务获得</div>
+                    </div>
+                  </div>
+                  <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:white;border:1px solid #E8E8E8;border-radius:6px;">
+                    <div>
+                      <div style="font-size:10px;color:#999;">当前数量</div>
+                      <div style="font-size:22px;font-weight:900;color:#1A1A2E;font-family:'JetBrains Mono',monospace;line-height:1.2;">3</div>
+                    </div>
+                    <button style="height:30px;padding:0 16px;border-radius:6px;border:1px solid #2B7DE9;background:#EBF5FF;color:#2B7DE9;font-size:11px;font-weight:600;cursor:pointer;">修改</button>
+                  </div>
+                </div>
+                <!-- 道具 B：编辑态（展示交互效果） -->
+                <div style="background:#F0F7FF;border:2px solid #2B7DE9;border-radius:8px;padding:14px;">
+                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+                    <div style="width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,#E0F4FF,#B3E0FF);display:flex;align-items:center;justify-content:center;font-size:18px;">🌊</div>
+                    <div>
+                      <div style="font-size:12px;font-weight:700;color:#1A1A2E;">道具 B（潮汐晶石）</div>
+                      <div style="font-size:10px;color:#2B7DE9;font-weight:600;">编辑中...</div>
+                    </div>
+                  </div>
+                  <div style="margin-bottom:10px;">
+                    <div style="font-size:10px;color:#999;margin-bottom:4px;">当前数量：<span style="color:#1A1A2E;font-weight:600;">2</span>　→　修改为：</div>
+                    <div style="height:36px;background:white;border:2px solid #2B7DE9;border-radius:6px;padding:0 12px;display:flex;align-items:center;font-size:16px;font-weight:700;color:#2B7DE9;font-family:'JetBrains Mono',monospace;box-shadow:0 0 0 3px rgba(43,125,233,0.1);">5</div>
+                  </div>
+                  <div style="display:flex;gap:8px;">
+                    <button style="flex:1;height:32px;border-radius:6px;background:#F5F5F5;color:#666;border:1px solid #E0E0E0;font-size:11px;font-weight:600;cursor:pointer;">取消</button>
+                    <button style="flex:1;height:32px;border-radius:6px;background:#2B7DE9;color:white;border:none;font-size:11px;font-weight:600;cursor:pointer;">确认修改</button>
+                  </div>
+                </div>
+              </div>
+              <div style="margin-top:10px;padding:8px 12px;background:#FFF8E1;border:1px solid #FFE082;border-radius:6px;font-size:10px;color:#F57F17;">⚠️ 修改道具数量将直接影响用户可攻击次数，请谨慎操作。所有变更将记录操作日志。</div>
+            </div>
+
+            <!-- 解锁权益确认弹窗（内联展示） -->
+            <div style="background:white;border-radius:10px;padding:24px;box-shadow:0 1px 3px rgba(0,0,0,0.06);text-align:center;max-width:320px;margin:0 auto;border:2px dashed #E8E8E8;">
+              <div style="font-size:14px;font-weight:700;color:#1A1A2E;margin-bottom:16px;">解锁权益提示</div>
+              <div style="font-size:14px;color:#333;margin-bottom:24px;">是否解锁权益？</div>
+              <div style="display:flex;gap:12px;justify-content:center;">
+                <button style="flex:1;height:36px;border-radius:6px;background:#F5F5F5;color:#666;border:1px solid #E0E0E0;font-size:13px;font-weight:600;cursor:pointer;">取消</button>
+                <button style="flex:1;height:36px;border-radius:6px;background:#2B7DE9;color:white;border:none;font-size:13px;font-weight:600;cursor:pointer;">确认</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="split-right">
+      <div class="doc-page-title"><span class="icon">👤</span> 后台 · 用户活动管理</div>
+      <div class="doc-card">
+        <div class="sec-num">10.1 功能概述</div>
+        <p>用户活动数据管理页用于运营人员<strong>查看指定用户</strong>在各活动中的参与数据，并支持手动干预操作（解锁/锁定奖励、管理道具数量）。页面采用<strong>左右分栏</strong>布局：左侧为活动列表导航，右侧为选中活动的用户数据详情。</p>
+      </div>
+      <div class="doc-card">
+        <div class="sec-num">10.2 用户查询</div>
+        <ul>
+          <li><strong>顶栏：</strong>显示当前查询用户的邮箱/用户名和 UID</li>
+          <li><strong>查询方式：</strong>通过 UID 或邮箱搜索用户，加载该用户参与的所有活动数据</li>
+          <li><strong>关闭：</strong>右上角 × 按钮关闭弹窗返回后台</li>
+        </ul>
+      </div>
+      <div class="doc-card">
+        <div class="sec-num">10.3 左侧活动列表</div>
+        <ul>
+          <li><strong>列表项：</strong>活动名称 + 活动 ID + 状态标签（<span class="tag-inline tag-green">启用</span> / 灰色禁用）</li>
+          <li><strong>选中态：</strong>左侧蓝色竖线 + 浅蓝背景 + 蓝色文字</li>
+          <li><strong>点击切换：</strong>切换右侧显示对应活动的用户数据</li>
+        </ul>
+      </div>
+      <div class="doc-card">
+        <div class="sec-num">10.4 累计伤害总览</div>
+        <ul>
+          <li><strong>大号数字：</strong>JetBrains Mono 等宽字体，36px 900 weight，展示该用户在活动期间的总伤害值</li>
+          <li><strong>单位标注：</strong>灰色小字 "点伤害"</li>
+          <li><strong>数据来源：</strong>实时读取该用户的攻击记录汇总</li>
+        </ul>
+      </div>
+      <div class="doc-card">
+        <div class="sec-num">10.5 里程碑奖励进度</div>
+        <p>以表格形式展示每个里程碑节点的领取状态，每行包含：</p>
+        <ul>
+          <li><strong>伤害阈值：</strong>大号数字展示目标伤害值</li>
+          <li><strong>奖励内容：</strong>卡片式展示，电量奖励显示黄色背景 + ⚡ 图标，勋章奖励显示勋章预览图 + 昵称</li>
+          <li><strong>状态标签：</strong><span class="tag-inline tag-green">已完成</span>（绿色）/ <span class="tag-inline tag-gold">待领取</span>（橙色）/ 灰色未达标</li>
+          <li><strong>操作按钮：</strong>已领取/待领取行显示 "锁定奖励"（红色），未达标行显示 "手动解锁"（蓝色）</li>
+        </ul>
+      </div>
+      <div class="doc-card">
+        <div class="sec-num">10.6 手动解锁 / 锁定</div>
+        <ul>
+          <li><strong>手动解锁：</strong>运营可为未达标用户强制解锁某个里程碑奖励（如客诉补偿）。点击后弹出确认弹窗 "是否解锁权益？"，确认后该节点变为 "待领取" 状态</li>
+          <li><strong>锁定奖励：</strong>运营可锁定已领取/待领取的奖励（如发现异常数据）。锁定后用户无法再领取该节点</li>
+          <li><strong>确认弹窗：</strong>所有手动操作均需二次确认（取消 / 确认 按钮），防止误操作</li>
+          <li><strong>操作日志：</strong>建议记录操作人、操作时间、操作内容，用于审计</li>
+        </ul>
+      </div>
+      <div class="doc-card">
+        <div class="sec-num">10.7 道具管理</div>
+        <p>运营可查看和修改用户当前持有的攻击道具数量，采用<strong>修改-确认</strong>两步操作防止误触：</p>
+        <ul>
+          <li><strong>默认展示态：</strong>道具 A / B 双列卡片，显示道具图标、名称、来源和当前数量（大号等宽字体），右侧有「修改」按钮</li>
+          <li><strong>编辑态：</strong>点击「修改」后卡片切换为编辑态（蓝色边框高亮），显示当前值 → 修改值的变化，数量输入框可编辑</li>
+          <li><strong>确认操作：</strong>编辑态底部显示「取消」和「确认修改」两个按钮，点击「确认修改」后生效，「取消」恢复原值</li>
+          <li><strong>数量下限：</strong>道具数量最低为 0，不允许输入负数</li>
+          <li><strong>风险提示：</strong>卡片下方黄色警告条提示「修改道具数量将直接影响用户可攻击次数，请谨慎操作」</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+<div class="tc-wrap">
+  <div class="tc-bar">
+    <span class="tc-arrow">▶</span>
+    <div class="tc-title">📝 测试用例</div>
+    <span class="tc-count">14 条</span>
+  </div>
+  <div class="tc-body">
+    <table class="tc-table">
+      <thead><tr><th>编号</th><th>优先级</th><th>测试场景</th><th>前置条件</th><th>操作步骤</th><th>预期结果</th><th>状态</th></tr></thead>
+      <tbody>
+        <tr><td class="tc-id">TC-UM-01</td><td class="tc-p0">P0</td><td>用户查询加载</td><td>用户管理页</td><td>输入 UID 搜索</td><td>加载该用户参与的所有活动数据</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-UM-02</td><td class="tc-p0">P0</td><td>累计伤害准确</td><td>选中某活动</td><td>查看伤害总览</td><td>显示正确的用户总伤害值</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-UM-03</td><td class="tc-p0">P0</td><td>里程碑状态正确</td><td>用户有不同状态里程碑</td><td>查看奖励进度表</td><td>已完成/待领取/未达标状态正确</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-UM-04</td><td class="tc-p0">P0</td><td>手动解锁奖励</td><td>某节点未达标</td><td>点击「手动解锁」→ 确认</td><td>该节点变为「待领取」状态</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-UM-05</td><td class="tc-p0">P0</td><td>锁定奖励</td><td>某节点已领取/待领取</td><td>点击「锁定奖励」→ 确认</td><td>该节点被锁定，用户无法领取</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-UM-06</td><td class="tc-p0">P0</td><td>二次确认弹窗</td><td>点击解锁/锁定按钮</td><td>观察弹窗</td><td>弹出确认弹窗，含取消/确认按钮</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-UM-07</td><td class="tc-p1">P1</td><td>活动列表切换</td><td>左侧有多个活动</td><td>点击其他活动</td><td>右侧数据切换为对应活动</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-UM-12</td><td class="tc-p0">P0</td><td>解锁后用户可领取</td><td>运营手动解锁某节点</td><td>用户在 H5 查看进度奖励</td><td>该节点显示为可领取，点击领取正常</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-UM-13</td><td class="tc-p1">P1</td><td>用户无攻击记录</td><td>新用户，未参与活动</td><td>查看该用户活动数据</td><td>累计伤害显示 0，所有里程碑显示未达标</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-UM-14</td><td class="tc-p1">P1</td><td>确认弹窗点击取消</td><td>点击解锁/锁定</td><td>在确认弹窗中点击「取消」</td><td>操作不执行，数据不变</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-UM-15</td><td class="tc-p0">P0</td><td>道具数量正确展示</td><td>选中用户活动</td><td>查看道具管理卡片</td><td>道具 A 和 B 当前数量正确显示，右侧有「修改」按钮</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-UM-16</td><td class="tc-p0">P0</td><td>点击修改进入编辑态</td><td>道具默认展示态</td><td>点击「修改」按钮</td><td>卡片切换为蓝色高亮编辑态，显示输入框和取消/确认按钮</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-UM-17</td><td class="tc-p0">P0</td><td>确认修改道具数量</td><td>编辑态，输入新数量</td><td>输入 5 并点击「确认修改」</td><td>数量更新为 5，卡片恢复展示态，用户端同步</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+        <tr><td class="tc-id">TC-UM-18</td><td class="tc-p0">P0</td><td>取消修改恢复原值</td><td>编辑态，已输入新数量</td><td>点击「取消」</td><td>数量恢复原值，卡片恢复展示态</td><td><span class="tc-st" data-s="0" onclick="">待测试</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+</div>
+
+</div><!-- end contentArea -->
+
+<script>
+// ================================================================
+// TAB SWITCHING
+// ================================================================
+
+function switchTab(id) {
+  document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+  const allBtns = document.querySelectorAll('.tab-btn');
+  const tabMap = ['bannerEntry','loading','main','task','reward','rules','adActList','adBanner','adConfig','adUserMgr'];
+  const idx = tabMap.indexOf(id);
+  if (idx >= 0 && allBtns[idx]) allBtns[idx].classList.add('active');
+
+  document.querySelectorAll('.tab-page').forEach(p => p.classList.remove('active'));
+  const page = document.getElementById('page-' + id);
+  if (page) page.classList.add('active');
+}
+
+// Test case collapsible toggle
+document.addEventListener('click', function(e) {
+  var bar = e.target.closest('.tc-bar');
+  if (bar) { bar.classList.toggle('open'); return; }
+  var st = e.target.closest('.tc-st');
+  if (st) {
+    var s = parseInt(st.getAttribute('data-s') || '0');
+    var labels = ['待测试','通过','不通过'];
+    s = (s + 1) % 3;
+    st.setAttribute('data-s', s);
+    st.textContent = labels[s];
+  }
+});
+</script>
+
+</body>
+</html>

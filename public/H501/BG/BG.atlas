@@ -1,0 +1,12 @@
+BG.png
+size:2048,2048
+filter:Linear,Linear
+BG
+bounds:2,523,1040,1460
+fog_1
+bounds:1044,1614,640,369
+fog_2
+bounds:1044,1239,629,373
+particle
+bounds:2,2,519,729
+rotate:90

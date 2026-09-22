@@ -1,0 +1,23 @@
+﻿
+> p17-h5meimo-demo@0.1.0 build:no-lint
+> next build --no-lint
+
+npm :  鈿?Linting is disabled.
+所在位置 C:\Users\Administrator\AppData\Local\Temp\ps-script-be7cdddc-7afe-4a93-94ee-ba77aa62bbc7.ps1:88 字符: 33
++ cd h:\PROJECT\P17_H5meimo-demo; npm run build:no-lint 2>&1 | Out-File ...
++                                 ~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ( 鈿?Linting is disabled.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+   鈻?Next.js 15.5.20
+   - Environments: .env.local, .env.production
+   - Experiments (use with caution):
+     路 serverActions
+
+   Creating an optimized production build ...
+uncaughtException [Error: EPERM: operation not permitted, open 'H:\PROJECT\P17_H5meimo-demo\.next\trace'] {
+  errno: -4048,
+  code: 'EPERM',
+  syscall: 'open',
+  path: 'H:\\PROJECT\\P17_H5meimo-demo\\.next\\trace'
+}

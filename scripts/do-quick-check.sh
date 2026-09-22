@@ -1,0 +1,25 @@
+#!/bin/bash
+echo '--- pm2 list ---'
+sudo -n pm2 list 2>&1 | head -10
+echo ''
+echo '--- pm2 pid ---'
+sudo -n pm2 pid repark-h5 2>&1
+echo ''
+echo '--- port 3000 ---'
+ss -ltnp | grep :3000 || echo 'FREE'
+echo ''
+echo '--- curl /api/time ---'
+curl -s -o /dev/null -w 'HTTP %{http_code} time=%{time_total}s\n' http://127.0.0.1:3000/api/time || echo 'FAILED'
+echo ''
+echo '--- curl /api/battle/leaderboard ---'
+curl -s -o /dev/null -w 'HTTP %{http_code}\n' http://127.0.0.1:3000/api/battle/leaderboard || echo 'FAILED'
+echo ''
+echo '--- BUILD_ID ---'
+cat /var/www/app/.next/BUILD_ID
+echo ''
+echo '--- pm2 save ---'
+sudo -n pm2 save 2>&1 && echo 'SAVED' || echo 'FAILED'
+echo ''
+echo '--- systemd check ---'
+ls /etc/systemd/system/pm2*.service 2>/dev/null && echo 'SYSTEMD_OK' || echo 'NO_SYSTEMD'
+crontab -l 2>/dev/null | grep pm2 && echo 'CRON_OK' || echo 'NO_CRON'

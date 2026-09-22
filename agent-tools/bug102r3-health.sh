@@ -1,0 +1,32 @@
+#!/bin/bash
+set -u
+echo "== /api/time =="
+curl -sS -w 'HTTP=%{http_code}\n' -o /tmp/time.json http://127.0.0.1:3000/api/time
+cat /tmp/time.json
+echo
+echo "== /admin/users unauth =="
+curl -sS -o /dev/null -D /tmp/admin.h -w 'HTTP=%{http_code}\n' http://127.0.0.1:3000/admin/users
+head -n 1 /tmp/admin.h
+echo "== BUILD_ID =="
+cat /var/www/app/.next/BUILD_ID
+echo "== pm2 =="
+sudo -n pm2 jlist | python3 -c "import json,sys
+d=json.loads(sys.stdin.read())
+p=[x for x in d if x['name']=='repark-h5'][0]
+print('pid=%s status=%s' % (p['pid'], p['pm2_env']['status']))"
+echo "== live chunk checks =="
+CHUNK=$(find /var/www/app/.next/static/chunks/app/admin/users -type f -name 'page-*.js' | head -1)
+echo "CHUNK=$CHUNK"
+ls -la "$CHUNK"
+echo "unlock phrase:"
+grep -c "确定要解锁奖励" "$CHUNK"
+echo "lock phrase:"
+grep -c "确定要锁定奖励" "$CHUNK"
+echo "OLD milestone # phrase (must be 0):"
+grep -c "里程碑 #" "$CHUNK"
+echo "server page.js:"
+grep -c "里程碑 #" /var/www/app/.next/server/app/admin/users/page.js
+echo "error fallback:"
+grep -c "操作失败，请稍后重试" "$CHUNK"
+echo "== snapshot =="
+ls -d /var/www/app/.rollback/bug102r3-* | tail -1

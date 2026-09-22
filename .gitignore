@@ -1,0 +1,84 @@
+# ────────────────────────────────────────────────────────────────────────────
+# Git ignore — P17 H5 魅魔来袭
+#
+# Purpose: control what is NEVER committed to the repository.
+# This file is independent of .dockerignore (build context boundary) and
+# .cursorignore (IDE indexer boundary).
+# ────────────────────────────────────────────────────────────────────────────
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+/test-results
+/playwright-report
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+
+# ── Security & Keys ────────────────────────────────────────────────────────
+# SSH private keys, deploy credentials, archived credentials
+keys/
+*.pem
+*.archived.pem
+*.archived
+admin-pw.txt
+admin-pw.*.txt
+.env
+.env.local
+.env.*.local
+.env.production
+.env.development
+.env.test
+.env.staging
+
+# Phase 10: owner-command key file (NEVER commit)
+/.owner-key
+
+# ── Logs & Temp ────────────────────────────────────────────────────────────
+*.log
+logs/
+*.tmp
+*.bak
+*.old
+*.orig
+*.rej
+*.swp
+*.swo
+temp-*
+
+# REPARK: Commander 一次性凭据归集, 永远不入仓
+/PROJECT_ALL_SECRETS_BACKUP.txt
+
+# debug (npm/yarn/pnpm)
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# Archive isolated deploy scripts (P2 isolation, 2026-08-10)
+
+scripts/_archive/
+
