@@ -1,21 +1,21 @@
-# ============================================================
-# CI Bootstrap SQL — P17 Activity Inventory DB Gate
-# ============================================================
-# Applies ALL schema migrations needed for the activity-inventory
-# tests (A1-A20 + migration forward/rollback) to a blank postgres:15
-# instance. This is the ONLY place schema is bootstrapped for CI.
-#
-# Strategy:
-#   - Run 0001..17 in order to create all production tables
-#   - Add claimed_count column to task_progress (production has it; not yet
-#     captured in a numbered migration file — added here as a CI-only patch)
-#   - Add user_activity_stats table (production has it; same situation)
-#   - After all migrations run, execute the target migration
-#     (2026-09-22-0001_activity_scoped_inventory.sql)
-#   - Rollback test drops and recreates the new table only
-#
-# DO NOT run this on production.
-# ============================================================
+-- ============================================================
+-- CI Bootstrap SQL — P17 Activity Inventory DB Gate
+-- ============================================================
+-- Applies ALL schema migrations needed for the activity-inventory
+-- tests (A1-A20 + migration forward/rollback) to a blank postgres:15
+-- instance. This is the ONLY place schema is bootstrapped for CI.
+--
+-- Strategy:
+--   - Run 0001..17 in order to create all production tables
+--   - Add claimed_count column to task_progress (production has it; not yet
+--     captured in a numbered migration file — added here as a CI-only patch)
+--   - Add user_activity_stats table (production has it; same situation)
+--   - After all migrations run, execute the target migration
+--     (2026-09-22-0001_activity_scoped_inventory.sql)
+--   - Rollback test drops and recreates the new table only
+--
+-- DO NOT run this on production.
+-- ============================================================
 
 -- ── 0001: initial schema ─────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.users (
