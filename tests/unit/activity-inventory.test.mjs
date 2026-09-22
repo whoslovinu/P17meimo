@@ -96,10 +96,14 @@ console.log('PRODUCTION_DB_USED=NO');
 
 // ── Production helpers ─────────────────────────────────────────────────────────
 // These import from the same DATABASE_URL env var set above.
+// Mirror the CI/test SSL override used by lib/db/postgres.ts so the
+// bootstrap pool honors DATABASE_SSL=false on ephemeral postgres.
+const disableDbSsl = process.env.DATABASE_SSL === 'false';
+
 const { Pool: PgPool } = pg;
 const prodPool = new PgPool({
   connectionString: TEST_DB_URL,
-  ssl: { rejectUnauthorized: false },
+  ssl: disableDbSsl ? false : { rejectUnauthorized: false },
   max: 5,
 });
 
