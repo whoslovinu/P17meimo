@@ -61,16 +61,11 @@ function buildPoolConfig(): PoolConfig {
     );
   }
 
-  // Detect whether we're traversing the local SSH tunnel or connecting to
-  // a CI-localhost ephemeral postgres (which does not support SSL).
-  // In that case, the RDS cert hostname won't match 127.0.0.1, so we must
-  // skip strict cert verification. In a real production deploy, switch this
-  // to use the AWS RDS CA bundle + rejectUnauthorized: true.
-  //
-  // For pure localhost / 127.0.0.1 (CI ephemeral postgres, local dev), we
-  // DISABLE SSL entirely because the ephemeral service does not support it
-  // and the SSH-tunnel mismatch path is not relevant.
-  const isLocalHost = url.includes('127.0.0.1') || url.includes('localhost');
+  // Optional CI/test override: set DATABASE_SSL=false to disable SSL for
+  // ephemeral postgres containers that have no SSL support.  When unset
+  // or set to any other value, SSL is always enabled with
+  // rejectUnauthorized: false (the original default — unchanged).
+  const disableDbSsl = process.env.DATABASE_SSL === 'false';
 
   return {
     connectionString: url,
@@ -78,15 +73,11 @@ function buildPoolConfig(): PoolConfig {
     idleTimeoutMillis: 30_000,
     connectionTimeoutMillis: 5_000,
     statement_timeout: 10_000,     // 10s hard ceiling per query — battle loop needs liveness
-    // FIX: always require SSL for AWS RDS. Even through the local SSH tunnel
+    // Always require SSL for AWS RDS. Even through the local SSH tunnel
     // the connection terminates at the RDS instance which has `rds.force_ssl=1`.
     // The cert hostname mismatch is handled by `rejectUnauthorized: false`,
     // which is acceptable because the SSH tunnel itself is already authenticated.
-    //
-    // For pure localhost / 127.0.0.1 (CI ephemeral postgres, local dev) we
-    // disable SSL — the ephemeral service does not support it, and the
-    // production RDS path is unaffected.
-    ssl: isLocalHost ? false : { rejectUnauthorized: false },
+    ssl: disableDbSsl ? false : { rejectUnauthorized: false },
   };
 }
 
