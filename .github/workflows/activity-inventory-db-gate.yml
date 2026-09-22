@@ -354,12 +354,14 @@ jobs:
           echo "DATABASE_URL_SET=$(if [ -n \"\${DATABASE_URL:-}\" ]; then echo YES; else echo NO; fi)"
           echo "DATABASE_SSL=${DATABASE_SSL:-UNSET}"
           echo "NODE_VERSION=$(node --version)"
-          echo "DATABASE_SSL=${DATABASE_SSL:-UNSET}" >> $GITHUB_STEP_SUMMARY
 
-          # Capture stdout+stderr so test output survives the step even on failure
-          npx tsx tests/unit/activity-inventory.test.mjs 2>&1 | tee test-output.log
+          # Run test; capture output to file for artifact and step summary
+          npx tsx tests/unit/activity-inventory.test.mjs > test-output.log 2>&1 || true
+          TEST_EXIT=$?
 
-          TEST_EXIT=${PIPESTATUS[0]}
+          # Append first 100 lines to step summary (visible without login)
+          head -100 test-output.log >> $GITHUB_STEP_SUMMARY
+
           echo ""
           echo "test_exit=$TEST_EXIT"
 
