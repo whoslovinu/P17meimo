@@ -159,10 +159,19 @@ jobs:
         run: |
           set -euo pipefail
           echo "─── Applying CI bootstrap schema ───"
+          echo "BOOTSTRAP_DB_HOST=localhost"
+          echo "BOOTSTRAP_DB_PORT=5432"
+          echo "BOOTSTRAP_DB_NAME=p17_inventory_test"
+          echo "BOOTSTRAP_DB_USER=postgres"
+          # ON_ERROR_STOP=1 makes psql abort the file on the FIRST error,
+          # so missing prerequisite tables trigger a non-zero exit
+          # (instead of silently leaving the schema half-built).
           PGPASSWORD=ci_test_pass_not_prod_12345 psql \
             -h localhost \
+            -p 5432 \
             -U postgres \
             -d p17_inventory_test \
+            -v ON_ERROR_STOP=1 \
             -f scripts/ci_db_bootstrap.sql
           echo "─── Bootstrap complete ───"
 
@@ -173,10 +182,18 @@ jobs:
         run: |
           set -euo pipefail
           echo "─── Applying migration forward ───"
+          echo "MIGRATION_DB_HOST=localhost"
+          echo "MIGRATION_DB_PORT=5432"
+          echo "MIGRATION_DB_NAME=p17_inventory_test"
+          echo "MIGRATION_DB_USER=postgres"
+          echo "SAME_DATABASE_AS_BOOTSTRAP=YES"
+          # Must point at the SAME -d as Bootstrap step (verified above).
           PGPASSWORD=ci_test_pass_not_prod_12345 psql \
             -h localhost \
+            -p 5432 \
             -U postgres \
             -d p17_inventory_test \
+            -v ON_ERROR_STOP=1 \
             -c "CREATE EXTENSION IF NOT EXISTS pgcrypto;" \
             -f supabase/migrations/2026-09-22-0001_activity_scoped_inventory.sql
 

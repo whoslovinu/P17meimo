@@ -305,10 +305,62 @@ VALUES
      '{"isGlobalEnabled": false, "items": {"propA": {"name": "闪电符文", "taskThreshold": 100, "dailyLimit": 5}, "propB": {"name": "潮汐晶石", "taskThreshold": 100, "dailyLimit": 5}}}')
 ON CONFLICT (id) DO UPDATE SET config = EXCLUDED.config;
 
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- Prerequisite gate (added in Run #2 fix):
+--   These are the exact tables the
+--   supabase/migrations/2026-09-22-0001_activity_scoped_inventory.sql
+--   migration depends on:
+--       public.users           → FK target of user_activity_inventory.user_id
+--       public.activities      → FK target of user_activity_inventory.activity_id
+--       public.user_inventory  → legacy companion table (kept for legacy reads)
+--       public.user_activity_stats  → read by persistAttackTransactionally
+--       public.task_progress          → read by task-claim/route.ts
+--       public.user_daily_tasks       → read by webhook/daily route
+--       public.attack_logs            → re-created above as needed
+--   If any of these is missing, the migration forward step WILL fail with
+--   "relation ... does not exist". This DO block must FAIL THE STEP LOUDLY
+--   (RAISE EXCEPTION + psql ON_ERROR_STOP=1 in the workflow) so we don't
+--   get a green bootstrap + downstream red migration.
+-- ═══════════════════════════════════════════════════════════════════════════════
+DO $prereq$
+DECLARE
+    missing text[] := ARRAY[]::text[];
+    label text;
+    rc regclass;
+BEGIN
+    FOR label IN
+        SELECT unnest(ARRAY[
+            'users',
+            'activities',
+            'user_inventory',
+            'user_activity_stats',
+            'task_progress',
+            'user_daily_tasks',
+            'attack_logs'
+        ])
+    LOOP
+        rc := to_regclass('public.' || label);
+        IF rc IS NULL THEN
+            missing := array_append(missing, label);
+        END IF;
+    END LOOP;
+
+    IF array_length(missing, 1) > 0 THEN
+        RAISE EXCEPTION
+            'CI bootstrap prerequisite FAILED — missing tables: %',
+            array_to_string(missing, ', ');
+    END IF;
+
+    RAISE NOTICE 'CI bootstrap prerequisite OK — all 7 migration-required tables present';
+END
+$prereq$;
+
 -- ════════════════════════════════════════════════════════════════════════════════
--- Verify: all required tables exist
+-- Verify: all required tables exist (original broader sweep)
 -- ════════════════════════════════════════════════════════════════════════════════
 DO $$
+DECLARE
+    tbl text;
 BEGIN
     FOR tbl IN
         SELECT unnest(ARRAY[
